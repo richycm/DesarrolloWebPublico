@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="Template Mo">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+
+    <title>Perímetro</title>
+	  
+<script language="javascript">
+	  function averiguarnota(cuestionario){
+		var resultado=0;
+		for(i=0; i<cuestionario.elements.length; i++)
+			if((cuestionario.elements[i].type=="radio")&&
+				(cuestionario.elements[i].value=="Bien")&&
+				(cuestionario.elements[i].checked))
+		resultado++;
+		alert("Acertaste "+resultado+" de 5 preguntas.");
+		return false;
+	}
+	
+	</script>	  
+
+    <!-- Additional CSS Files -->
+    <link rel="stylesheet" type="text/css" href="assets/csstemas/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="assets/csstemas/font-awesome.css">
+    <link rel="stylesheet" type="text/css" href="assets/csstemas/templatemo-art-factory.css">
+    <link rel="stylesheet" type="text/css" href="assets/csstemas/owl-carousel.css">
+
+    </head>
+    
+    <body>
+    
+    <!-- ***** Preloader Start ***** -->
+    <div id="preloader">
+        <div class="jumper">
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+    </div>  
+    <!-- ***** Preloader End ***** -->
+    
+    
+    <!-- ***** Header Area Start ***** -->
+   <header class="header-area header-sticky">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <nav class="main-nav">
+                        <!-- *** Logo Start *** -->
+                        <a href="index.html" class="logo"><img src="assets/images/logo.png" width="130" height="85" alt=""/></a>
+                        <!-- *** Logo End *** -->
+                        <!-- *** Menu Start *** -->
+                        <ul class="nav">
+                            <li class="scroll-to-section"><a href="index.html" class="inicio">Inicio</a></li>  
+							<li class="scroll-to-section"><a href="calculadora.html">Calculadora Online</a>	</li>  
+							
+    <!-- *** Menu End *** -->
+						</ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- ***** Header Area End ***** -->
+
+
+    <!-- ***** Welcome Area Start ***** -->
+    <div class="welcome-area" id="welcome">
+    
+    </div>
+    <!-- ***** Welcome Area End ***** -->
+
+
+    <!-- ***** Features Big Item Start ***** -->
+    <section class="section" id="about">
+        <div class="container">
+			<h3><em><center>
+			  <h2>Perímetro</h2>
+			  <p>&nbsp;</p>
+			</center></em></h3>
+		  <p>El prímetro es la suma de las longitudes de los lados de cualquier figura geométrica plana. Se trata de un concepto clave para las matemáticas, que junto con el área, que resulta cercano, es necesario dominar para transitar hacia matemáticas más avanzadas como el álgebra y la trigonometría, ya que perminten la construcción de polígonos.</p>
+		  <p><center><img src="assets/images/perimetro.png" width="280" height="180" alt=""/></center</p>
+		  <p>&nbsp;</p>
+			<p>></p>
+		  <div id="po-dfp-post-001-0"></div>
+<h3><span id="sumas"><em>¿Cómo calcular el perímetro?</em></span></h3>
+			<blockquote>
+			  <p>En prácticamente cualquier polígono, solo debes de sumar las longitudes de todos sus lados, esto para obtener el perímetro de la figura deseada.</p>
+			  <p><center><img src="assets/images/p-poligono.jfif" width="336" height="150" alt=""/></center></p>
+			  <p>Pero el caso de un círculo es diferente, para empezar, en un círculo no tiene perímetro sino que tiene una circunferencia, la cual se calcula un poco diferente a cualquier otra figura geométrica. A diferencia de otra figura, el círculo requiere de otra fórmula, esta es la siguiente:</p>
+			  <p><center>
+			    <p>P= 2 * π * r
+			    </p>
+			    <p>Donde: </p>
+			    <p>π = Pi (3.1416)</p>
+			    <p>r = Radio de círculo</p>
+			    <p><img src="assets/images/p-circulo.jfif" width="160" height="153" alt=""/></p>
+				  </center></p>
+				  
+				  
+				  
+				  <p>&nbsp;</p>
+				<center><h4>Vídeos para reforzar lo aprendido</h4>
+				  <iframe width="853" height="480" src="https://www.youtube.com/embed/d3rI0ONOMMY" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+					<p>&nbsp;</p>
+					<iframe width="853" height="480" src="https://www.youtube.com/embed/4MYS2vFkOc0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+					
+				  </center>
+				  
+				  
+				   <p>&nbsp;</p>
+			<center><h4>Cuestionario para reforzar lo aprendido</h4></center>
+			  <p>&nbsp;</p>
+				
+				<div align="left">
+				<form name="cuestionario" onSubmit="return averiguarnota(this)">
+					
+					1).¿Qué es el perímetro?
+					<br><input type="radio" name="respuesta1" value="Mal">La multiplicación de los lados de una figura
+					<br><input type="radio" name="respuesta1" value="Bien">La suma de las longitudes de todos los lados de una figura
+					<br><input type="radio" name="respuesta1" value="Mal">El área que abarca una figura
+					<br>
+					<p>&nbsp;</p>
+					2).El perímetro de un círculo es mejor llamado como...
+					<br><input type="radio" name="respuesta2" value="Bien">Circunferencia
+					<br><input type="radio" name="respuesta2" value="Mal">Perímetro
+					<br><input type="radio" name="respuesta2" value="Mal">Lado
+					<br>
+					<p>&nbsp;</p>
+					3).En la fórmula para sacar el perímetro de un círculo (2 * π * r), ¿qué significa r?
+					<br><input type="radio" name="respuesta3" value="Mal">Área del círculo
+					<br><input type="radio" name="respuesta3" value="Mal">Recta
+					<br><input type="radio" name="respuesta3" value="Bien">Radio
+					<br>
+					<p>&nbsp;</p>
+					4).¿Qué nos permite hacer el perímetro?
+					<br><input type="radio" name="respuesta4" value="Mal">Saber cuanto espacio ocupa una figura
+					<br><input type="radio" name="respuesta4" value="Mal">Nada
+					<br><input type="radio" name="respuesta4" value="Bien">La construcción de figuras
+					<br>
+					<p>&nbsp;</p>
+					5).Si una figura tiene 90 lados, ¿su fórmula sigue siendo la misma que el de una figura de 4 lados?
+					<br><input type="radio" name="respuesta5" value="Mal">No
+					<br><input type="radio" name="respuesta5" value="Bien">Sí
+					<br>
+					<p>&nbsp;</p>
+					<br><input type="submit" value="Calificar">
+				
+				</form>
+				  </div>
+			
+        </div>
+        <div class="col-lg-5 col-md-12 col-sm-12">
+          <ul class="social">
+          </ul>
+        </div>
+    </section>
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-7 col-md-12 col-sm-12">
+                    <p class="copyright">Copyright &copy; 2021 A-MATE UWU. </p>
+                </div>
+                <div class="col-lg-5 col-md-12 col-sm-12">
+                    <ul class="social">
+                        <li><a href="https://www.facebook.com/A-MATE-UWU-108049115022437"><i class="fa fa-facebook"></i></a></li>
+                        <li><a href="https://twitter.com/amateuwu"><i class="fa fa-twitter"></i></a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- jQuery -->
+    <script src="assets/js/jquery-2.1.0.min.js"></script>
+
+    <!-- Bootstrap -->
+    <script src="assets/js/popper.js"></script>
+    <script src="assets/js/bootstrap.min.js"></script>
+
+    <!-- Plugins -->
+    <script src="assets/js/owl-carousel.js"></script>
+    <script src="assets/js/scrollreveal.min.js"></script>
+    <script src="assets/js/waypoints.min.js"></script>
+    <script src="assets/js/jquery.counterup.min.js"></script>
+    <script src="assets/js/imgfix.min.js"></script> 
+    
+    <!-- Global Init -->
+    <script src="assets/js/custom.js"></script>
+
+  </body>
+</html>
