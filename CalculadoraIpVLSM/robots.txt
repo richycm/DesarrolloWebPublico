@@ -1,0 +1,11 @@
+.text
+main:
+    addi $s0, $s0, 40
+    sw $s0, 8($s1)
+    lw $s3, 8($s1)
+    addi $s0, $s3, 100
+    addi $v0, $s0, 1
+    syscall
+
+    addi $v0, $s0, 10
+    syscall
