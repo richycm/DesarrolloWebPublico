@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grid Master Pro | Ricardo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #a855f7;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #f8fafc;
+            --border: #334155;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 950px;
+            background: var(--surface);
+            border-radius: 24px;
+            padding: 35px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        h1 { 
+            margin-top: 0; 
+            text-align: center; 
+            background: linear-gradient(135deg, #818cf8, #c084fc); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+            font-weight: 800;
+        }
+
+        /* --- DRAG & DROP ZONE --- */
+        .drop-area {
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(15, 23, 42, 0.3);
+            margin-bottom: 30px;
+        }
+
+        .drop-area:hover, .drop-area.active {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.08);
+            transform: scale(1.01);
+        }
+
+        /* --- CONTROLES MODERNOS --- */
+        .controls-wrapper {
+            background: #0b1120;
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid var(--border);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            align-items: end;
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 8px; position: relative; }
+        
+        .input-group label { 
+            font-size: 0.75rem; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+            color: #94a3b8; 
+            font-weight: 700; 
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-group input { 
+            background: #1e293b; 
+            border: 1px solid var(--border); 
+            color: white; 
+            padding: 12px 15px; 
+            border-radius: 10px; 
+            font-size: 1.1rem; 
+            outline: none; 
+            width: 100%;
+            transition: 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .input-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); }
+
+        /* Botón de Candado */
+        .lock-btn {
+            background: #334155;
+            border: none;
+            color: #94a3b8;
+            border-radius: 8px;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+            margin-bottom: 2px; /* Alineación visual */
+        }
+        .lock-btn.locked { background: var(--primary); color: white; }
+        .lock-btn:hover { filter: brightness(1.1); }
+
+        /* Checkbox bonito */
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #334155;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        /* BOTONES DE ACCIÓN */
+        .btn-action {
+            width: 100%;
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .btn-gen { background: white; color: #0f172a; }
+        .btn-gen:hover { background: #f1f5f9; }
+        
+        .btn-down { 
+            background: linear-gradient(to right, #10b981, #059669); 
+            color: white; 
+            display: none; /* Oculto al inicio */
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-down:hover { transform: translateY(-2px); shadow: 0 10px 20px rgba(16, 185, 129, 0.3); }
+
+        /* CANVAS */
+        .canvas-container {
+            margin-top: 30px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #333;
+            background: #000;
+            display: none;
+            position: relative;
+        }
+        canvas { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <h1>Grid Master Pro</h1>
+
+    <div class="drop-area" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*" hidden>
+        <div style="font-size: 2.5rem; margin-bottom: 10px;">📤</div>
+        <p style="margin:0; font-weight: 500;">Arrastra tu imagen aquí</p>
+        <small style="color: #64748b;">Soporta PNG transparente, JPG, WEBP</small>
+    </div>
+
+    <div class="controls-wrapper">
+        <div class="controls-grid">
+            
+            <div class="input-group">
+                <label>↔ Columnas (X)</label>
+                <div class="input-wrapper">
+                    <input type="number" id="colsInput" value="4" min="1">
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
+                <button class="lock-btn locked" id="lockBtn" title="Bloquear Proporción (Cuadrados Perfectos)" onclick="toggleLock()">
+                    <span id="lockIcon">🔒</span>
+                </button>
+            </div>
+
+            <div class="input-group">
+                <label>↕ Filas (Y)</label>
+                <div class="input-wrapper">
+                    <input type="number" id="rowsInput" value="4" min="1">
+                </div>
+            </div>
+
+        </div>
+
+        <div class="checkbox-row">
+            <label class="switch">
+                <input type="checkbox" id="bwCheck">
+                <span class="slider"></span>
+            </label>
+            <span style="font-weight: 500; font-size: 0.9rem;">Modo Blanco y Negro</span>
+        </div>
+
+        <button class="btn-action btn-gen" onclick="processImage()">⚡ Actualizar Cuadrícula</button>
+    </div>
+
+    <div class="canvas-container" id="canvasContainer">
+        <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <button class="btn-action btn-down" id="downloadBtn" onclick="downloadImage()">
+        ⬇ Descargar Imagen Final
+    </button>
+</div>
+
+<script>
+    // Referencias al DOM
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const colsInput = document.getElementById('colsInput');
+    const rowsInput = document.getElementById('rowsInput');
+    const lockBtn = document.getElementById('lockBtn');
+    const lockIcon = document.getElementById('lockIcon');
+    const bwCheck = document.getElementById('bwCheck');
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let currentImage = null;
+    let isLocked = true; // Estado inicial del candado
+
+    // --- 1. LÓGICA DEL CANDADO ---
+    function toggleLock() {
+        isLocked = !isLocked;
+        if (isLocked) {
+            lockBtn.classList.add('locked');
+            lockIcon.innerText = '🔒';
+            // Al bloquear, recalculamos filas para volver a cuadrar
+            if (currentImage) updateDimensions('cols'); 
+        } else {
+            lockBtn.classList.remove('locked');
+            lockIcon.innerText = '🔓';
+        }
+        processImage();
+    }
+
+    // --- 2. LÓGICA DE INPUTS VINCULADOS ---
+    colsInput.addEventListener('input', () => {
+        if (isLocked && currentImage) updateDimensions('cols');
+        processImage();
+    });
+
+    rowsInput.addEventListener('input', () => {
+        if (isLocked && currentImage) updateDimensions('rows');
+        processImage();
+    });
+
+    function updateDimensions(source) {
+        if (!currentImage) return;
+        const aspect = currentImage.width / currentImage.height;
+
+        if (source === 'cols') {
+            // Si cambio Columnas, calculo Filas
+            const val = parseInt(colsInput.value) || 1;
+            // filas = columnas / aspecto
+            rowsInput.value = Math.max(1, Math.round(val / aspect));
+        } else {
+            // Si cambio Filas, calculo Columnas
+            const val = parseInt(rowsInput.value) || 1;
+            // columnas = filas * aspecto
+            colsInput.value = Math.max(1, Math.round(val * aspect));
+        }
+    }
+
+    // --- 3. CARGA DE IMAGEN (Drag & Drop) ---
+    dropZone.onclick = () => fileInput.click();
+    
+    dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('active'); };
+    dropZone.ondragleave = () => dropZone.classList.remove('active');
+    
+    dropZone.ondrop = (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('active');
+        if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+    };
+
+    fileInput.onchange = (e) => {
+        if (e.target.files[0]) loadFile(e.target.files[0]);
+    };
+
+    function loadFile(file) {
+        if (!file.type.match('image.*')) return alert("Solo imágenes por favor");
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                currentImage = img;
+                // Al cargar nueva imagen, si está bloqueado, reseteamos a proporción correcta
+                if (isLocked) updateDimensions('cols'); 
+                processImage();
+                
+                // Mostrar UI
+                document.getElementById('canvasContainer').style.display = 'block';
+                document.getElementById('downloadBtn').style.display = 'flex';
+                document.getElementById('canvasContainer').scrollIntoView({behavior: "smooth", block: "center"});
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // --- 4. DIBUJADO EN CANVAS ---
+    bwCheck.addEventListener('change', processImage);
+
+    function processImage() {
+        if (!currentImage) return;
+
+        const cols = parseInt(colsInput.value) || 1;
+        const rows = parseInt(rowsInput.value) || 1;
+
+        canvas.width = currentImage.width;
+        canvas.height = currentImage.height;
+
+        // Fondo Blanco (Fix PNG transparentes)
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Filtro B/N
+        ctx.filter = bwCheck.checked ? 'grayscale(100%)' : 'none';
+        
+        ctx.drawImage(currentImage, 0, 0);
+        ctx.filter = 'none'; // Reset filtro para líneas
+
+        // Dibujar Cuadrícula
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+        ctx.lineWidth = Math.max(1, currentImage.width / 600); // Grosor dinámico
+
+        const cellWidth = canvas.width / cols;
+        const cellHeight = canvas.height / rows;
+
+        ctx.beginPath();
+        
+        // Verticales
+        for (let i = 0; i <= cols; i++) {
+            const x = i * cellWidth;
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+        }
+
+        // Horizontales
+        for (let j = 0; j <= rows; j++) {
+            const y = j * cellHeight;
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+        }
+
+        ctx.stroke();
+    }
+
+    function downloadImage() {
+        if (!currentImage) return;
+        const link = document.createElement('a');
+        link.download = `grid_pro_${colsInput.value}x${rowsInput.value}.jpg`;
+        link.href = canvas.toDataURL("image/jpeg", 0.95);
+        link.click();
+    }
+</script>
+
+</body>
+</html>
