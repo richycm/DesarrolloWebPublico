@@ -61,7 +61,16 @@ document.getElementById('videoInput').onchange = (e) => {
 function handleFile(file) {
     if (!file) return; 
     mainVideo.src = URL.createObjectURL(file);
-    dropZone.innerText = "🎬 " + file.name;
+    
+    // MAGIA UX: Reconstruimos la caja para indicar que se puede seguir usando
+    dropZone.innerHTML = `
+        <div class="text-center space-y-3">
+            <p class="text-5xl text-emerald-400">✅</p>
+            <p class="text-sm font-semibold text-slate-200">🎬 ${file.name}</p>
+            <p class="text-xs text-emerald-400 font-medium bg-emerald-900/30 py-1 px-3 rounded-full inline-block border border-emerald-800/50">Haz clic o arrastra para cargar un video nuevo</p>
+        </div>
+    `;
+    
     ['loopSection', 'chromaSection', 'exportSection'].forEach(id => document.getElementById(id).classList.add('panel-disabled'));
 }
 
@@ -311,7 +320,6 @@ btnExportSpriteSheet.onclick = () => {
 btnAppendToMaster.onclick = () => {
     if (btnAppendToMaster.disabled || finalExportCanvas.width === 0) return alert("Capa de exportación vacía.");
 
-    // Respaldar la fila que vamos a añadir
     const newRow = document.createElement('canvas');
     newRow.width = finalExportCanvas.width; newRow.height = finalExportCanvas.height;
     newRow.getContext('2d').drawImage(finalExportCanvas, 0, 0);
@@ -324,29 +332,24 @@ btnAppendToMaster.onclick = () => {
         masterCtx.drawImage(newRow, 0, 0);
         isMasterEmpty = false;
     } else {
-        // Respaldar Master actual
         const oldMaster = document.createElement('canvas');
         oldMaster.width = masterCanvas.width; oldMaster.height = masterCanvas.height;
         oldMaster.getContext('2d').drawImage(masterCanvas, 0, 0);
 
-        // Expandir Master Canvas (ancho máximo y sumar altura)
         masterCanvas.width = Math.max(oldMaster.width, newRow.width);
         masterCanvas.height = oldMaster.height + newRow.height;
         
         masterCtx.imageRendering = 'pixelated';
         masterCtx.clearRect(0,0, masterCanvas.width, masterCanvas.height);
         
-        // Dibujar el Master viejo arriba, y la fila nueva justo debajo
         masterCtx.drawImage(oldMaster, 0, 0);
         masterCtx.drawImage(newRow, 0, oldMaster.height);
     }
 
-    // Animación de scroll automático hacia el Master Board para que el usuario vea el resultado
     masterCanvas.parentElement.scrollTop = masterCanvas.parentElement.scrollHeight;
     document.getElementById('masterSection').scrollIntoView({ behavior: 'smooth' });
 };
 
-// Cargar PNG previo al Master Board
 masterDropZone.onclick = () => masterInput.click();
 masterInput.onchange = (e) => { if(e.target.files.length) loadMasterImage(e.target.files[0]); };
 
@@ -375,7 +378,7 @@ function loadMasterImage(file) {
 btnDownloadMaster.onclick = () => {
     if(isMasterEmpty) return alert("El Master Board está vacío.");
     const link = document.createElement('a');
-    link.download = `master.png`;
+    link.download = `spritesheet_master.png`;
     link.href = masterCanvas.toDataURL('image/png');
     link.click();
 };
