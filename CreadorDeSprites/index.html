@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprite Studio Pro - Ultimate Pipeline</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased">
+
+    <div class="app-container">
+        <header class="text-center pb-8 border-b border-slate-800">
+            <h1 class="text-4xl font-bold text-white tracking-tight">Sprite Studio <span class="text-indigo-400">Pro</span></h1>
+            <p class="text-slate-400 mt-2 text-sm">Pipeline profesional no destructivo para masterizar ciclos de sprites.</p>
+        </header>
+
+        <main class="main-grid mt-8">
+            
+            <div class="col-left space-y-8">
+                <section class="card p-6">
+                    <h2 class="card-title text-emerald-400 text-center mb-5">1. Carga de Assets</h2>
+                    <div id="dropZone" class="drop-zone mt-4">
+                        <div class="text-center space-y-3">
+                            <p class="text-6xl">🎬</p>
+                            <p class="text-sm font-semibold text-slate-200">Arrastra tu video de IA</p>
+                            <p class="text-xs text-slate-500">o haz clic para buscar</p>
+                        </div>
+                        <input type="file" id="videoInput" accept="video/*" hidden>
+                    </div>
+                    
+                    <div class="mt-5 flex flex-col sm:flex-row gap-4 items-center bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                        <div class="flex items-center gap-3 justify-center w-full sm:w-auto">
+                            <label class="text-sm text-slate-300 whitespace-nowrap">Paso frames:</label>
+                            <input type="number" id="frameStep" value="1" min="1" class="input-modern w-20 text-center font-bold">
+                        </div>
+                        <button id="generateBtn" class="btn btn-primary w-full sm:flex-1 py-3 text-base shadow-lg">⚡ Extraer Fotogramas</button>
+                    </div>
+                </section>
+
+                <section class="card p-6 panel-disabled" id="chromaSection">
+                    <h2 class="card-title text-purple-400 text-center mb-5">2. Chroma Key en Vivo</h2>
+                    <div class="flex flex-col items-center gap-4">
+                        <canvas id="chromaRefCanvas" class="w-24 h-24 rounded-xl border-2 border-slate-700 cursor-crosshair object-cover shadow-inner"></canvas>
+                        <p class="text-xs text-slate-500 text-center">Haz clic arriba para elegir el color de fondo.</p>
+                        
+                        <div class="w-full space-y-3 mt-2 bg-slate-900 p-4 rounded-lg border border-slate-700">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-slate-300 font-medium">Color:</span>
+                                <div id="colorPreview" class="w-8 h-8 rounded-full border-2 border-white bg-black ring-2 ring-indigo-500/50"></div>
+                            </div>
+                            <div>
+                                <label class="text-sm text-slate-400 flex justify-between">Tolerancia: <span id="tolValue" class="text-indigo-300 font-mono">30</span></label>
+                                <input type="range" id="chromaTolerance" min="1" max="150" value="30" class="slider-modern w-full mt-2">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-right space-y-8">
+                <section class="card p-6">
+                    <h2 class="card-title text-slate-400 text-center mb-4">Capa 1: Fotogramas Originales</h2>
+                    <div class="border border-slate-800 rounded-xl bg-slate-950 overflow-hidden">
+                        <div id="timeline" class="timeline scroll-h"></div>
+                    </div>
+                </section>
+
+                <section class="card p-6 panel-disabled" id="loopSection">
+                    <div class="flex justify-between items-center mb-5">
+                        <h2 class="card-title text-indigo-400">Capa 2: Editor de Ciclo</h2>
+                        <div class="flex gap-2 font-mono">
+                            <span class="badge badge-start">Inicio: <b id="fStart">1</b></span>
+                            <span class="badge badge-end">Final: <b id="fEnd">1</b></span>
+                        </div>
+                    </div>
+
+                    <div class="border border-slate-800 rounded-xl bg-slate-950 mb-6 overflow-hidden">
+                        <div id="loopTimeline" class="timeline loop-bar scroll-h"></div>
+                    </div>
+
+                    <div class="flex justify-center mb-8 w-full">
+                        <div class="p-2 rounded-2xl border border-slate-700 shadow-2xl ring-4 ring-indigo-900/40 inline-block max-w-full checkerboard-bg">
+                            <canvas id="loopCanvas" class="canvas-preview rounded-xl"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="grid-2col gap-4 bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                        <div class="flex flex-col gap-3">
+                            <label class="toggle-container">
+                                <span class="text-slate-300 text-sm">Ping-Pong</span>
+                                <input type="checkbox" id="pingPongMode">
+                                <div class="toggle-slider"></div>
+                            </label>
+                            <label class="toggle-container toggle-magic">
+                                <span class="text-purple-300 text-sm">✨ Suavizado IA</span>
+                                <input type="checkbox" id="blendLoopMode" checked>
+                                <div class="toggle-slider"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center gap-3 justify-center md:border-l md:border-slate-700">
+                            <span class="text-sm text-slate-300">Frames extra:</span>
+                            <input type="number" id="blendFramesCount" value="4" min="1" max="15" class="input-modern w-20 text-center font-bold">
+                        </div>
+                    </div>
+
+                    <div class="grid-2col gap-4 mt-6">
+                        <div class="control-card-modern p-4 rounded-xl border border-slate-700 start-gradient">
+                            <label class="text-xs text-slate-400 uppercase font-semibold tracking-wider">Frame Inicio</label>
+                            <div class="flex items-center gap-3 mt-3 w-full">
+                                <input type="number" id="manualFrameStart" class="input-manual-frame text-emerald-300" min="1" value="1">
+                                <input type="range" id="loopStart" value="0" step="0.01" class="slider-modern flex-1">
+                            </div>
+                        </div>
+                        <div class="control-card-modern p-4 rounded-xl border border-slate-700 end-gradient">
+                            <label class="text-xs text-slate-400 uppercase font-semibold tracking-wider">Frame Final</label>
+                            <div class="flex items-center gap-3 mt-3 w-full">
+                                <input type="number" id="manualFrameEnd" class="input-manual-frame text-rose-300" min="1" value="1">
+                                <input type="range" id="loopEnd" value="1" step="0.01" class="slider-modern flex-1">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <section class="card p-6 mt-6 panel-disabled" id="exportSection">
+            <h2 class="card-title text-orange-400 mb-5">Capa Final: Exportación Optimizada <span class="text-xs text-slate-500">(PNG Transparente)</span></h2>
+            
+            <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 mb-5 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <label class="text-sm text-slate-300 font-semibold whitespace-nowrap">Divisor de frames (Salto):</label>
+                    <input type="number" id="frameSkip" value="1" min="1" class="input-modern font-bold bg-slate-900 text-indigo-300 border-indigo-500/50 w-24 text-center">
+                    <span class="text-xs text-slate-500 hidden md:block">Ejem: 2 = Mitad, 3 = Tercio</span>
+                </div>
+                
+                <div id="skipWarning" class="text-rose-400 text-sm font-semibold hidden text-center md:text-left bg-rose-900/20 py-2 px-4 rounded-lg border border-rose-900/50 flex-1 mx-4">
+                    ⚠️ ¡Cuidado! Tu loop de <span id="totalLoopFrames">0</span> frames no se puede dividir exactamente entre <span id="currentSkip"></span>. Ajusta el inicio/fin o cambia el número.
+                </div>
+
+                <div class="text-sm text-slate-300 text-center md:text-right">
+                    Total a exportar:<br>
+                    <span id="finalSpriteCount" class="text-emerald-400 font-bold text-2xl">0</span> <span class="text-xs">sprites</span>
+                </div>
+            </div>
+
+            <div class="border border-slate-700 rounded-xl p-3 shadow-inner bg-slate-900 overflow-hidden w-full mb-5">
+                <div class="scroll-h checkerboard-bg" style="width: 100%; border-radius: 0.5rem;">
+                    <canvas id="finalExportCanvas" class="image-rendering-pixelated block"></canvas>
+                </div>
+            </div>
+
+            <button id="btnExportSpriteSheet" class="btn btn-export shadow-lg py-3 text-base w-full">💾 Descargar Sprite Sheet (PNG)</button>
+        </section>
+
+    </div>
+
+    <canvas id="procCanvas" style="display:none;"></canvas>
+    <video id="mainVideo" style="display:none;"></video>
+    <script src="script.js"></script>
+</body>
+</html>
