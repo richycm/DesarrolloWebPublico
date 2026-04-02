@@ -17,15 +17,24 @@ const colorPreview = document.getElementById('colorPreview');
 const chromaTolerance = document.getElementById('chromaTolerance');
 const tolValueLabel = document.getElementById('tolValue');
 
-// Exportación y Reducción
 const finalExportCanvas = document.getElementById('finalExportCanvas');
 const frameSkip = document.getElementById('frameSkip');
 const skipWarning = document.getElementById('skipWarning');
 const btnExportSpriteSheet = document.getElementById('btnExportSpriteSheet');
 
+// MASTER BOARD ELEMENTS
+const masterCanvas = document.getElementById('masterCanvas');
+const masterCtx = masterCanvas.getContext('2d');
+const btnAppendToMaster = document.getElementById('btnAppendToMaster');
+const masterDropZone = document.getElementById('masterDropZone');
+const masterInput = document.getElementById('masterInput');
+const btnDownloadMaster = document.getElementById('btnDownloadMaster');
+const btnClearMaster = document.getElementById('btnClearMaster');
+
 let originalFramesData = [], processedFrames = [], timeStampMap = [], loopThumbElements = [];
 let previewTimer, currentLoopIdx = 0, playDirection = 1, selectedRGB = null;
 const FPS = 30;
+let isMasterEmpty = true;
 
 // --- 1. DRAG & DROP INMERSIVO ---
 dropZone.onclick = () => document.getElementById('videoInput').click();
@@ -136,8 +145,7 @@ function syncLoopControls(source) {
         if (i === idxE) c.classList.add('end-mark');
     });
 
-    currentLoopIdx = 0; // Resetear índice interno del array dinámico
-    
+    currentLoopIdx = 0; 
     updateChromaRef(); updateExportPreview(); startCanvasPreview();
 }
 
@@ -151,9 +159,7 @@ manualFrameStart.onchange = () => syncLoopControls('keyboard'); manualFrameEnd.o
 
 ['pingPongMode', 'blendLoopMode', 'blendFramesCount'].forEach(id => document.getElementById(id).onchange = startCanvasPreview);
 
-// Cada vez que el usuario cambie el divisor, actualizar ambas vistas
 frameSkip.oninput = () => {
-    // Evitar valores nulos o cero
     if (frameSkip.value < 1) frameSkip.value = 1;
     updateExportPreview();
     startCanvasPreview();
@@ -172,29 +178,19 @@ function startCanvasPreview() {
         
         if (isNaN(idxS) || isNaN(idxE)) return;
 
-        // LA MAGIA: Crear un array dinámico solo con los frames que saltan la criba
         let activeIndices = [];
-        for (let i = idxS; i <= idxE; i += skip) {
-            activeIndices.push(i);
-        }
-        
-        // Seguro por si el usuario pone un salto más grande que el total de frames
+        for (let i = idxS; i <= idxE; i += skip) activeIndices.push(i);
         if (activeIndices.length === 0) activeIndices.push(idxS);
         const maxIdx = activeIndices.length - 1;
 
-        // Limitar el currentLoopIdx a la longitud del nuevo array
         if (currentLoopIdx > maxIdx || currentLoopIdx < 0) currentLoopIdx = 0;
 
         let frame, reset = false;
         
         if (isBlend && !isPingPong && magicStep > 0) {
-            // El suavizado ahora une el ÚLTIMO frame cortado con el PRIMERO cortado
             frame = createBlended(processedFrames[activeIndices[maxIdx]], processedFrames[activeIndices[0]], magicStep / (numBlend + 1));
             if (++magicStep > numBlend) { magicStep = 0; reset = true; }
-        } else { 
-            // Reproducir usando el array dinámico
-            frame = processedFrames[activeIndices[currentLoopIdx]]; 
-        }
+        } else { frame = processedFrames[activeIndices[currentLoopIdx]]; }
 
         if (frame) {
             loopCanvas.width = frame.width; loopCanvas.height = frame.height;
@@ -202,7 +198,6 @@ function startCanvasPreview() {
             loopCtx.imageRendering = 'pixelated'; loopCtx.drawImage(frame, 0, 0);
         }
 
-        // Avance lógico basado en el array de salto
         if (reset) currentLoopIdx = 0;
         else if (isPingPong) {
             currentLoopIdx += playDirection;
@@ -215,7 +210,7 @@ function startCanvasPreview() {
                 }
             }
         }
-    }, 1000 / FPS); // Se mantiene la misma velocidad general, dando el efecto "cortado"
+    }, 1000 / FPS); 
 }
 
 function createBlended(e, s, a) {
@@ -258,7 +253,7 @@ function applyChromaNonDestructive() {
     updateExportPreview(); 
 }
 
-// --- 6. EXPORTACIÓN OPTIMIZADA Y MATEMÁTICA ---
+// --- 6. EXPORTACIÓN OPTIMIZADA (FILA ÚNICA) ---
 function updateExportPreview() {
     if(!processedFrames.length) return;
     
@@ -269,7 +264,6 @@ function updateExportPreview() {
     const framesToExport = processedFrames.slice(idxS, idxE + 1);
     if(framesToExport.length === 0) return;
 
-    // Validación de Módulo: ¿Es el salto perfectamente divisible en el total de cuadros?
     const skip = parseInt(frameSkip.value) || 1;
     const totalFrames = framesToExport.length;
     
@@ -278,21 +272,18 @@ function updateExportPreview() {
         document.getElementById('totalLoopFrames').innerText = totalFrames;
         document.getElementById('currentSkip').innerText = skip;
         
-        btnExportSpriteSheet.disabled = true;
-        btnExportSpriteSheet.style.opacity = "0.5";
-        btnExportSpriteSheet.style.cursor = "not-allowed";
+        btnExportSpriteSheet.disabled = true; btnAppendToMaster.disabled = true;
+        btnExportSpriteSheet.style.opacity = "0.5"; btnAppendToMaster.style.opacity = "0.5";
         
         finalExportCanvas.getContext('2d').clearRect(0,0, finalExportCanvas.width, finalExportCanvas.height);
         document.getElementById('finalSpriteCount').innerText = "0";
-        return; // Salimos sin renderizar la hoja
+        return; 
     } else {
         skipWarning.classList.add('hidden');
-        btnExportSpriteSheet.disabled = false;
-        btnExportSpriteSheet.style.opacity = "1";
-        btnExportSpriteSheet.style.cursor = "pointer";
+        btnExportSpriteSheet.disabled = false; btnAppendToMaster.disabled = false;
+        btnExportSpriteSheet.style.opacity = "1"; btnAppendToMaster.style.opacity = "1";
     }
 
-    // Filtrado de sprites finales usando Modulus
     const finalSprites = framesToExport.filter((_, i) => i % skip === 0);
     document.getElementById('finalSpriteCount').innerText = finalSprites.length;
 
@@ -306,18 +297,93 @@ function updateExportPreview() {
     ctx.imageRendering = 'pixelated'; 
     ctx.clearRect(0,0, finalExportCanvas.width, finalExportCanvas.height);
     
-    finalSprites.forEach((f, index) => {
-        ctx.drawImage(f, index * frameW, 0);
-    });
+    finalSprites.forEach((f, index) => { ctx.drawImage(f, index * frameW, 0); });
 }
 
 btnExportSpriteSheet.onclick = () => {
     if (btnExportSpriteSheet.disabled) return;
-    const dataURL = finalExportCanvas.toDataURL('image/png');
     const link = document.createElement('a');
-    link.download = `spritesheet_opt_${manualFrameStart.value}_to_${manualFrameEnd.value}.png`;
-    link.href = dataURL;
+    link.download = `fila_sprites_${manualFrameStart.value}_to_${manualFrameEnd.value}.png`;
+    link.href = finalExportCanvas.toDataURL('image/png'); link.click();
+};
+
+// --- 7. MASTER BOARD COMPOSITOR ---
+btnAppendToMaster.onclick = () => {
+    if (btnAppendToMaster.disabled || finalExportCanvas.width === 0) return alert("Capa de exportación vacía.");
+
+    // Respaldar la fila que vamos a añadir
+    const newRow = document.createElement('canvas');
+    newRow.width = finalExportCanvas.width; newRow.height = finalExportCanvas.height;
+    newRow.getContext('2d').drawImage(finalExportCanvas, 0, 0);
+
+    if (isMasterEmpty) {
+        masterCanvas.width = newRow.width;
+        masterCanvas.height = newRow.height;
+        masterCtx.imageRendering = 'pixelated';
+        masterCtx.clearRect(0,0, masterCanvas.width, masterCanvas.height);
+        masterCtx.drawImage(newRow, 0, 0);
+        isMasterEmpty = false;
+    } else {
+        // Respaldar Master actual
+        const oldMaster = document.createElement('canvas');
+        oldMaster.width = masterCanvas.width; oldMaster.height = masterCanvas.height;
+        oldMaster.getContext('2d').drawImage(masterCanvas, 0, 0);
+
+        // Expandir Master Canvas (ancho máximo y sumar altura)
+        masterCanvas.width = Math.max(oldMaster.width, newRow.width);
+        masterCanvas.height = oldMaster.height + newRow.height;
+        
+        masterCtx.imageRendering = 'pixelated';
+        masterCtx.clearRect(0,0, masterCanvas.width, masterCanvas.height);
+        
+        // Dibujar el Master viejo arriba, y la fila nueva justo debajo
+        masterCtx.drawImage(oldMaster, 0, 0);
+        masterCtx.drawImage(newRow, 0, oldMaster.height);
+    }
+
+    // Animación de scroll automático hacia el Master Board para que el usuario vea el resultado
+    masterCanvas.parentElement.scrollTop = masterCanvas.parentElement.scrollHeight;
+    document.getElementById('masterSection').scrollIntoView({ behavior: 'smooth' });
+};
+
+// Cargar PNG previo al Master Board
+masterDropZone.onclick = () => masterInput.click();
+masterInput.onchange = (e) => { if(e.target.files.length) loadMasterImage(e.target.files[0]); };
+
+masterDropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; masterDropZone.classList.add('drag-over'); });
+masterDropZone.addEventListener('dragleave', () => masterDropZone.classList.remove('drag-over'));
+masterDropZone.addEventListener('drop', (e) => {
+    e.preventDefault(); masterDropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) loadMasterImage(e.dataTransfer.files[0]);
+});
+
+function loadMasterImage(file) {
+    if(!file || !file.type.startsWith('image/')) return alert("Sube un archivo PNG");
+    const img = new Image();
+    img.onload = () => {
+        masterCanvas.width = img.width;
+        masterCanvas.height = img.height;
+        masterCtx.imageRendering = 'pixelated';
+        masterCtx.clearRect(0,0, masterCanvas.width, masterCanvas.height);
+        masterCtx.drawImage(img, 0, 0);
+        isMasterEmpty = false;
+        document.getElementById('masterSection').scrollIntoView({ behavior: 'smooth' });
+    };
+    img.src = URL.createObjectURL(file);
+}
+
+btnDownloadMaster.onclick = () => {
+    if(isMasterEmpty) return alert("El Master Board está vacío.");
+    const link = document.createElement('a');
+    link.download = `master.png`;
+    link.href = masterCanvas.toDataURL('image/png');
     link.click();
+};
+
+btnClearMaster.onclick = () => {
+    if(!confirm("¿Seguro que deseas borrar el Master Board completo?")) return;
+    masterCanvas.width = 0; masterCanvas.height = 0;
+    isMasterEmpty = true;
 };
 
 // Conversión de scroll de la rueda del ratón

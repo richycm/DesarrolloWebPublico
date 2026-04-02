@@ -127,22 +127,21 @@
         </main>
 
         <section class="card p-6 mt-6 panel-disabled" id="exportSection">
-            <h2 class="card-title text-orange-400 mb-5">Capa Final: Exportación Optimizada <span class="text-xs text-slate-500">(PNG Transparente)</span></h2>
+            <h2 class="card-title text-orange-400 mb-5">Capa 4: Exportación Optimizada <span class="text-xs text-slate-500">(Fila Única)</span></h2>
             
             <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 mb-5 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div class="flex items-center gap-3">
                     <label class="text-sm text-slate-300 font-semibold whitespace-nowrap">Divisor de frames (Salto):</label>
                     <input type="number" id="frameSkip" value="1" min="1" class="input-modern font-bold bg-slate-900 text-indigo-300 border-indigo-500/50 w-24 text-center">
-                    <span class="text-xs text-slate-500 hidden md:block">Ejem: 2 = Mitad, 3 = Tercio</span>
                 </div>
                 
                 <div id="skipWarning" class="text-rose-400 text-sm font-semibold hidden text-center md:text-left bg-rose-900/20 py-2 px-4 rounded-lg border border-rose-900/50 flex-1 mx-4">
-                    ⚠️ ¡Cuidado! Tu loop de <span id="totalLoopFrames">0</span> frames no se puede dividir exactamente entre <span id="currentSkip"></span>. Ajusta el inicio/fin o cambia el número.
+                    ⚠️ Loop no divisible exactamente. Ajusta el salto.
                 </div>
 
                 <div class="text-sm text-slate-300 text-center md:text-right">
-                    Total a exportar:<br>
-                    <span id="finalSpriteCount" class="text-emerald-400 font-bold text-2xl">0</span> <span class="text-xs">sprites</span>
+                    Total sprites:<br>
+                    <span id="finalSpriteCount" class="text-emerald-400 font-bold text-2xl">0</span>
                 </div>
             </div>
 
@@ -152,7 +151,34 @@
                 </div>
             </div>
 
-            <button id="btnExportSpriteSheet" class="btn btn-export shadow-lg py-3 text-base w-full">💾 Descargar Sprite Sheet (PNG)</button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button id="btnExportSpriteSheet" class="btn btn-export shadow-lg py-3 text-base w-full">💾 Descargar Fila Sola</button>
+                <button id="btnAppendToMaster" class="btn btn-master shadow-lg py-3 text-base w-full">⬇️ Estampar en el Master Board</button>
+            </div>
+        </section>
+
+        <section class="card p-6 mt-6 border-fuchsia-900/50 shadow-[0_0_30px_rgba(217,70,239,0.1)]" id="masterSection">
+            <h2 class="card-title text-fuchsia-400 mb-5 text-center text-2xl">Capa 5: Master Board (Compositor Final)</h2>
+            
+            <div class="flex flex-col md:flex-row gap-6 mb-6">
+                <div id="masterDropZone" class="flex-1 drop-zone p-4 flex flex-col items-center justify-center border-fuchsia-500/30 hover:border-fuchsia-400 bg-fuchsia-950/10">
+                    <p class="text-2xl mb-2">📁</p>
+                    <p class="text-sm font-semibold text-fuchsia-200">Arrastra un PNG Master previo</p>
+                    <p class="text-xs text-slate-400 text-center mt-1">Si ya tenías uno armado, súbelo y síguele pegando filas.</p>
+                    <input type="file" id="masterInput" accept="image/png" hidden>
+                </div>
+                
+                <div class="flex flex-col gap-3 justify-center">
+                    <button id="btnDownloadMaster" class="btn btn-master shadow-lg py-3 px-8 text-base">💾 Descargar Master Final</button>
+                    <button id="btnClearMaster" class="btn bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 py-2">🗑️ Limpiar Master</button>
+                </div>
+            </div>
+
+            <div class="border border-slate-700 rounded-xl p-3 shadow-inner bg-slate-900 w-full overflow-hidden">
+                <div class="scroll-h checkerboard-bg" style="max-height: 500px; overflow-y: auto; border-radius: 0.5rem; display: block;">
+                    <canvas id="masterCanvas" class="image-rendering-pixelated block mx-auto"></canvas>
+                </div>
+            </div>
         </section>
 
     </div>
