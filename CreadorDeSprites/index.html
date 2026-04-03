@@ -18,25 +18,24 @@
         </header>
 
         <main class="main-grid mt-8">
-            
             <div class="col-left space-y-8">
                 <section class="card p-6">
                     <h2 class="card-title text-emerald-400 text-center mb-5">1. Carga de Assets</h2>
                     <div id="dropZone" class="drop-zone mt-4">
                         <div class="text-center space-y-3">
-                            <p class="text-6xl">🎬</p>
-                            <p class="text-sm font-semibold text-slate-200">Arrastra tu video de IA</p>
-                            <p class="text-xs text-slate-500">o haz clic para buscar</p>
+                            <p class="text-6xl">🗂️</p>
+                            <p class="text-sm font-semibold text-slate-200">Arrastra tu video o imagen</p>
+                            <p class="text-xs text-slate-500">Soporta videos (.mp4) e imágenes (.png, .jpg)</p>
                         </div>
-                        <input type="file" id="videoInput" accept="video/*" hidden>
                     </div>
+                    <input type="file" id="videoInput" accept="video/*, image/*" hidden>
                     
                     <div class="mt-5 flex flex-col sm:flex-row gap-4 items-center bg-slate-800/50 p-4 rounded-xl border border-slate-700">
                         <div class="flex items-center gap-3 justify-center w-full sm:w-auto">
                             <label class="text-sm text-slate-300 whitespace-nowrap">Paso frames:</label>
-                            <input type="number" id="frameStep" value="1" min="1" class="input-modern w-20 text-center font-bold">
+                            <input type="number" id="frameStep" value="1" min="1" class="input-modern w-20 text-center font-bold" title="Solo aplica para videos">
                         </div>
-                        <button id="generateBtn" class="btn btn-primary w-full sm:flex-1 py-3 text-base shadow-lg">⚡ Extraer Fotogramas</button>
+                        <button id="generateBtn" class="btn btn-primary w-full sm:flex-1 py-3 text-base shadow-lg">⚡ Procesar Asset</button>
                     </div>
                 </section>
 
@@ -44,16 +43,20 @@
                     <h2 class="card-title text-purple-400 text-center mb-5">2. Chroma Key en Vivo</h2>
                     <div class="flex flex-col items-center gap-4">
                         <canvas id="chromaRefCanvas" class="w-24 h-24 rounded-xl border-2 border-slate-700 cursor-crosshair object-cover shadow-inner"></canvas>
-                        <p class="text-xs text-slate-500 text-center">Haz clic arriba para elegir el color de fondo.</p>
                         
-                        <div class="w-full space-y-3 mt-2 bg-slate-900 p-4 rounded-lg border border-slate-700">
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm text-slate-300 font-medium">Color:</span>
+                        <div class="w-full mt-2 bg-slate-900 p-4 rounded-lg border border-slate-700">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-sm text-slate-300 font-medium">Color a borrar:</span>
                                 <div id="colorPreview" class="w-8 h-8 rounded-full border-2 border-white bg-black ring-2 ring-indigo-500/50"></div>
                             </div>
-                            <div>
+                            <div class="mb-4">
                                 <label class="text-sm text-slate-400 flex justify-between">Tolerancia: <span id="tolValue" class="text-indigo-300 font-mono">30</span></label>
                                 <input type="range" id="chromaTolerance" min="1" max="150" value="30" class="slider-modern w-full mt-2">
+                            </div>
+                            <div class="pt-3 border-t border-slate-800">
+                                <label class="text-sm text-slate-400 flex justify-between">Erosión bordes: <span id="erodeValue" class="text-rose-400 font-mono">0 px</span></label>
+                                <input type="range" id="chromaErode" min="0" max="5" value="0" class="slider-modern w-full mt-2">
+                                <p class="text-[10px] text-slate-500 mt-1 text-center">Come píxeles del contorno para limpiar halos.</p>
                             </div>
                         </div>
                     </div>
@@ -62,7 +65,7 @@
 
             <div class="col-right space-y-8">
                 <section class="card p-6">
-                    <h2 class="card-title text-slate-400 text-center mb-4">Capa 1: Fotogramas Originales</h2>
+                    <h2 class="card-title text-slate-400 text-center mb-4">Capa 1: Originales</h2>
                     <div class="border border-slate-800 rounded-xl bg-slate-950 overflow-hidden">
                         <div id="timeline" class="timeline scroll-h"></div>
                     </div>
@@ -108,14 +111,14 @@
 
                     <div class="grid-2col gap-4 mt-6">
                         <div class="control-card-modern p-4 rounded-xl border border-slate-700 start-gradient">
-                            <label class="text-xs text-slate-400 uppercase font-semibold tracking-wider">Frame Inicio</label>
+                            <label class="text-xs text-slate-400 uppercase font-semibold tracking-wider">Inicio</label>
                             <div class="flex items-center gap-3 mt-3 w-full">
                                 <input type="number" id="manualFrameStart" class="input-manual-frame text-emerald-300" min="1" value="1">
                                 <input type="range" id="loopStart" value="0" step="0.01" class="slider-modern flex-1">
                             </div>
                         </div>
                         <div class="control-card-modern p-4 rounded-xl border border-slate-700 end-gradient">
-                            <label class="text-xs text-slate-400 uppercase font-semibold tracking-wider">Frame Final</label>
+                            <label class="text-xs text-slate-400 uppercase font-semibold tracking-wider">Final</label>
                             <div class="flex items-center gap-3 mt-3 w-full">
                                 <input type="number" id="manualFrameEnd" class="input-manual-frame text-rose-300" min="1" value="1">
                                 <input type="range" id="loopEnd" value="1" step="0.01" class="slider-modern flex-1">
@@ -129,25 +132,65 @@
         <section class="card p-6 mt-6 panel-disabled" id="exportSection">
             <h2 class="card-title text-orange-400 mb-5">Capa 4: Exportación Optimizada <span class="text-xs text-slate-500">(Fila Única)</span></h2>
             
-            <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 mb-5 flex flex-col md:flex-row items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <label class="text-sm text-slate-300 font-semibold whitespace-nowrap">Divisor de frames (Salto):</label>
-                    <input type="number" id="frameSkip" value="1" min="1" class="input-modern font-bold bg-slate-900 text-indigo-300 border-indigo-500/50 w-24 text-center">
-                </div>
+            <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 mb-5">
                 
-                <div id="skipWarning" class="text-rose-400 text-sm font-semibold hidden text-center md:text-left bg-rose-900/20 py-2 px-4 rounded-lg border border-rose-900/50 flex-1 mx-4">
-                    ⚠️ Loop no divisible exactamente. Ajusta el salto.
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 border-b border-slate-700">
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm text-slate-300 font-semibold">Salto de frames:</label>
+                        <input type="number" id="frameSkip" value="1" min="1" class="input-modern font-bold w-16 text-center">
+                    </div>
+                    <div class="text-sm text-slate-300 text-center">
+                        Total sprites: <span id="finalSpriteCount" class="text-emerald-400 font-bold text-xl ml-1">0</span>
+                    </div>
                 </div>
 
-                <div class="text-sm text-slate-300 text-center md:text-right">
-                    Total sprites:<br>
-                    <span id="finalSpriteCount" class="text-emerald-400 font-bold text-2xl">0</span>
+                <div class="mt-4">
+                    <label class="text-sm text-slate-300 font-bold block mb-2">Modo de Alineación:</label>
+                    <select id="alignModeSelect" class="input-modern w-full md:w-1/2 bg-slate-900 border-indigo-500 font-semibold cursor-pointer">
+                        <option value="auto">🤖 Mantener recorte de personaje automático</option>
+                        <option value="manual">🛠️ Modificar por el usuario</option>
+                    </select>
                 </div>
+
+                <div id="manualControls" class="hidden mt-6 flex flex-col gap-4">
+                    <div class="flex items-center gap-3 mb-2">
+                        <label class="text-sm text-slate-300 font-semibold text-emerald-400">Tamaño Celda (Grid):</label>
+                        <input type="number" id="gridW" value="180" min="10" class="input-modern font-bold bg-slate-900 w-20 text-center">
+                        <span class="text-slate-500">x</span>
+                        <input type="number" id="gridH" value="180" min="10" class="input-modern font-bold bg-slate-900 w-20 text-center">
+                    </div>
+
+                    <div class="w-full bg-slate-900 p-4 rounded-lg border border-slate-700">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-sm text-slate-400">Tamaño (%):</label>
+                            <input type="number" id="numScale" value="100" class="bg-transparent border-none text-indigo-300 font-mono font-bold text-right w-16 outline-none" min="5" max="300">
+                        </div>
+                        <input type="range" id="assetScale" min="5" max="300" value="100" class="slider-modern w-full">
+                    </div>
+                    
+                    <div class="w-full bg-slate-900 p-4 rounded-lg border border-slate-700">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-sm text-slate-400">Posición X:</label>
+                            <input type="number" id="numOffX" value="0" class="bg-transparent border-none text-emerald-300 font-mono font-bold text-right w-16 outline-none">
+                        </div>
+                        <input type="range" id="offsetX" min="-200" max="200" value="0" class="slider-modern w-full">
+                    </div>
+                    
+                    <div class="w-full bg-slate-900 p-4 rounded-lg border border-slate-700">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-sm text-slate-400">Posición Y:</label>
+                            <input type="number" id="numOffY" value="0" class="bg-transparent border-none text-rose-300 font-mono font-bold text-right w-16 outline-none">
+                        </div>
+                        <input type="range" id="offsetY" min="-200" max="200" value="0" class="slider-modern w-full">
+                    </div>
+                </div>
+
             </div>
 
-            <div class="border border-slate-700 rounded-xl p-3 shadow-inner bg-slate-900 overflow-hidden w-full mb-5">
-                <div class="scroll-h checkerboard-bg" style="width: 100%; border-radius: 0.5rem;">
-                    <canvas id="finalExportCanvas" class="image-rendering-pixelated block"></canvas>
+            <div class="border border-slate-700 rounded-xl p-3 shadow-inner bg-slate-900 overflow-hidden w-full mb-5 relative">
+                <div id="gridGuide" class="absolute top-0 left-0 w-full h-full pointer-events-none z-10 opacity-30 hidden" style="background-image: linear-gradient(90deg, #4f46e5 1px, transparent 1px), linear-gradient(0deg, #f43f5e 1px, transparent 1px); background-position: 12px 12px;"></div>
+                <div class="scroll-h checkerboard-bg" style="width: 100%; border-radius: 0.5rem; position: relative; z-index: 5;">
+                    <canvas id="finalExportCanvas" class="image-rendering-pixelated block" style="height: auto; max-height: 250px;"></canvas>
                 </div>
             </div>
 
@@ -158,25 +201,40 @@
         </section>
 
         <section class="card p-6 mt-6 border-fuchsia-900/50 shadow-[0_0_30px_rgba(217,70,239,0.1)]" id="masterSection">
-            <h2 class="card-title text-fuchsia-400 mb-5 text-center text-2xl">Capa 5: Master Board (Compositor Final)</h2>
+            <h2 class="card-title text-fuchsia-400 mb-5 text-center text-2xl">Capa 5: Master Board Dinámico</h2>
             
             <div class="flex flex-col md:flex-row gap-6 mb-6">
-                <div id="masterDropZone" class="flex-1 drop-zone p-4 flex flex-col items-center justify-center border-fuchsia-500/30 hover:border-fuchsia-400 bg-fuchsia-950/10">
-                    <p class="text-2xl mb-2">📁</p>
-                    <p class="text-sm font-semibold text-fuchsia-200">Arrastra un PNG Master previo</p>
-                    <p class="text-xs text-slate-400 text-center mt-1">Si ya tenías uno armado, súbelo y síguele pegando filas.</p>
-                    <input type="file" id="masterInput" accept="image/png" hidden>
+                <div class="flex flex-col gap-4 w-full md:w-1/3">
+                    <div id="masterDropZone" class="drop-zone p-4 flex flex-col items-center justify-center border-fuchsia-500/30 hover:border-fuchsia-400 bg-fuchsia-950/10 h-full">
+                        <p class="text-2xl mb-2">📁</p>
+                        <p class="text-sm font-semibold text-fuchsia-200 text-center">Arrastra un PNG Master previo</p>
+                        <input type="file" id="masterInput" accept="image/png" hidden>
+                    </div>
                 </div>
-                
-                <div class="flex flex-col gap-3 justify-center">
-                    <button id="btnDownloadMaster" class="btn btn-master shadow-lg py-3 px-8 text-base">💾 Descargar Master Final</button>
-                    <button id="btnClearMaster" class="btn bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 py-2">🗑️ Limpiar Master</button>
+
+                <div class="flex flex-col w-full md:w-2/3 border border-fuchsia-800/30 rounded-xl p-4 bg-fuchsia-950/20 shadow-lg">
+                    <h3 class="text-xs font-bold text-fuchsia-200 mb-3 text-center uppercase tracking-wider">Gestión de Filas</h3>
+                    <div id="rowManagerContainer" class="row-manager-wrapper">
+                        <p class="text-center text-slate-600 text-xs py-6">La cuadrícula está vacía.</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="border border-slate-700 rounded-xl p-3 shadow-inner bg-slate-900 w-full overflow-hidden">
-                <div class="checkerboard-bg" style="max-height: 500px; overflow-y: auto; border-radius: 0.5rem; text-align: center; padding: 10px;">
-                    <canvas id="masterCanvas" class="image-rendering-pixelated inline-block" style="max-width: 100%; height: auto; box-shadow: 0px 4px 15px rgba(0,0,0,0.5);"></canvas>
+            <div style="position: relative; z-index: 10; display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin-bottom: 1rem; padding-top: 1rem; border-top: 1px solid #1e293b;">
+                <button id="btnDownloadMaster" class="btn btn-master shadow-lg py-2 px-6 text-sm">💾 Descargar Master Final</button>
+                <button id="btnClearMaster" class="btn bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 py-2 px-6 text-sm">🗑️ Limpiar Master</button>
+            </div>
+
+            <div style="position: relative; z-index: 10; display: flex; justify-content: center; gap: 1rem; margin-bottom: 0.75rem;">
+                <button id="btnZoomOut" class="btn bg-slate-800 hover:bg-slate-700 text-white px-4">➖ Zoom</button>
+                <button id="btnZoomReset" class="btn bg-slate-800 hover:bg-slate-700 text-white px-4">1:1 Centro</button>
+                <button id="btnZoomIn" class="btn bg-slate-800 hover:bg-slate-700 text-white px-4">➕ Zoom</button>
+                <span class="text-slate-400 text-xs ml-4 self-center flex items-center gap-2">🖱️ Ctrl+Rueda (Zoom) / Rueda sola (Pan)</span>
+            </div>
+
+            <div style="position: relative; width: 100%; height: 500px; overflow: hidden; border: 1px solid #334155; border-radius: 0.75rem; background-color: #0f172a; z-index: 1;">
+                <div id="masterCamera" class="grab-cursor" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0; z-index: 2;">
+                    <canvas id="masterCanvas" class="image-rendering-pixelated" style="position: absolute; top: 0; left: 0;"></canvas>
                 </div>
             </div>
         </section>
@@ -184,7 +242,9 @@
     </div>
 
     <canvas id="procCanvas" style="display:none;"></canvas>
-    <video id="mainVideo" style="display:none;"></video>
+    <video id="mainVideo" style="display:none;" muted playsinline crossorigin="anonymous"></video>
+    <img id="mainImage" style="display:none;" crossorigin="anonymous">
+    
     <script src="script.js"></script>
 </body>
 </html>
