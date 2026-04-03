@@ -23,8 +23,10 @@ const erodeValueLabel = document.getElementById('erodeValue');
 // EXPORTACIÓN Y RECORTE CAPA 4
 const finalExportCanvas = document.getElementById('finalExportCanvas');
 const frameSkip = document.getElementById('frameSkip');
+const skipWarning = document.getElementById('skipWarning');
 const btnExportSpriteSheet = document.getElementById('btnExportSpriteSheet');
 
+// SELECTOR Y CONTROLES NUMÉRICOS
 const alignModeSelect = document.getElementById('alignModeSelect');
 const manualControls = document.getElementById('manualControls');
 
@@ -61,6 +63,17 @@ let currentCroppedSprites = [];
 let masterGridRows = []; 
 let masterUploadedImg = null; 
 
+// Para bloquear la cuadrícula base y hacer el Auto-Scale
+let lockedGridW = 0;
+let lockedGridH = 0;
+let universalReferenceH = 0; // Se guarda en la Fila 1
+
+// Memoria para que el Auto le pase los valores al Manual sin brincar
+window.lastAutoScale = 100;
+window.lastAutoOffX = 0;
+window.lastAutoOffY = 0;
+let prevMode = 'auto';
+
 // VARIABLES DE LA CÁMARA
 let mScale = 1;
 let mPanX = 0, mPanY = 0;
@@ -68,16 +81,20 @@ let isDraggingM = false;
 let startDragX, startDragY;
 
 // --- 1. DRAG & DROP INMERSIVO ---
-dropZone.onclick = () => document.getElementById('videoInput').click();
-window.addEventListener('dragover', (e) => e.preventDefault(), false);
-window.addEventListener('drop', (e) => e.preventDefault(), false);
-dropZone.addEventListener('dragenter', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); });
-dropZone.addEventListener('drop', (e) => {
-    e.preventDefault(); dropZone.classList.remove('drag-over');
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    window.addEventListener(eventName, preventDefaults, false);
+    dropZone.addEventListener(eventName, preventDefaults, false);
 });
+function preventDefaults (e) { e.preventDefault(); e.stopPropagation(); }
+['dragenter', 'dragover'].forEach(eventName => { dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false); });
+['dragleave', 'drop'].forEach(eventName => { dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false); });
+
+dropZone.addEventListener('drop', (e) => {
+    let dt = e.dataTransfer; let files = dt.files;
+    if(files.length) handleFile(files[0]);
+}, false);
+
+dropZone.onclick = () => document.getElementById('videoInput').click();
 document.getElementById('videoInput').onchange = (e) => { if (e.target.files.length) handleFile(e.target.files[0]); };
 
 function handleFile(file) {
@@ -152,7 +169,10 @@ generateBtn.onclick = async () => {
     manualFrameStart.value = 1; manualFrameEnd.value = originalFramesData.length;
     generateBtn.innerText = "⚡ Procesar Asset"; generateBtn.disabled = false;
     
-    syncLoopControls('slider'); updateChromaRef(); updateExportPreview(); startCanvasPreview();
+    syncLoopControls('slider'); updateChromaRef(); 
+    alignModeSelect.value = 'auto'; // Forzar a auto al cargar uno nuevo
+    alignModeSelect.dispatchEvent(new Event('change'));
+    startCanvasPreview();
 };
 
 function saveFrameToPipeline(procCanvas) {
@@ -316,9 +336,8 @@ function applyChromaNonDestructive() {
     updateExportPreview(); 
 }
 
-// --- 6. EXPORTACIÓN HÍBRIDA CAPA 4 (AUTO/MANUAL CON CAJITAS NUMÉRICAS) ---
+// --- 6. EXPORTACIÓN HÍBRIDA CAPA 4 (LA MAGIA VISUAL/MANUAL) ---
 
-// Sincronizar Range Sliders con los Inputs Numéricos (Teclado habilitado)
 assetScale.oninput = (e) => { numScale.value = e.target.value; updateExportPreview(); };
 numScale.oninput = (e) => { assetScale.value = e.target.value; updateExportPreview(); };
 
@@ -331,19 +350,57 @@ numOffY.oninput = (e) => { offsetY.value = e.target.value; updateExportPreview()
 gridWInput.oninput = updateExportPreview;
 gridHInput.oninput = updateExportPreview;
 
-// Menú Híbrido Auto/Manual
-alignModeSelect.onchange = () => {
-    if (alignModeSelect.value === 'auto') {
-        manualControls.classList.add('hidden');
-        gridGuide.classList.add('hidden');
-    } else {
+// Actualizar estados visuales de la UI
+function updateAlignmentUI() {
+    let isAuto = alignModeSelect.value === 'auto';
+    let isMasterLocked = masterGridRows.length > 0;
+
+    // Asegurarse que el contenedor de controles siempre esté visible
+    if(manualControls.classList.contains('hidden')) {
         manualControls.classList.remove('hidden');
-        gridGuide.classList.remove('hidden');
     }
+
+    const manualInputs = [assetScale, numScale, offsetX, numOffX, offsetY, numOffY];
+    manualInputs.forEach(el => { el.disabled = isAuto; });
+
+    if (isAuto) {
+        manualControls.style.opacity = '0.5';
+        manualControls.style.pointerEvents = 'none';
+        if(gridGuide) gridGuide.style.display = 'none';
+    } else {
+        manualControls.style.opacity = '1';
+        manualControls.style.pointerEvents = 'auto';
+        if(gridGuide) gridGuide.style.display = 'block';
+    }
+
+    if (isMasterLocked) {
+        gridWInput.disabled = true;
+        gridHInput.disabled = true;
+    } else {
+        gridWInput.disabled = isAuto;
+        gridHInput.disabled = isAuto;
+    }
+}
+
+// Evento al cambiar el desplegable
+alignModeSelect.onchange = () => {
+    let currentMode = alignModeSelect.value;
+
+    // MAGIA: Si el usuario pasa de 'auto' a 'manual', inyectamos los valores para que NO BRINQUE
+    if (prevMode === 'auto' && currentMode === 'manual') {
+        assetScale.value = window.lastAutoScale;
+        numScale.value = window.lastAutoScale;
+        offsetX.value = window.lastAutoOffX;
+        numOffX.value = window.lastAutoOffX;
+        offsetY.value = window.lastAutoOffY;
+        numOffY.value = window.lastAutoOffY;
+    }
+    
+    prevMode = currentMode;
+    updateAlignmentUI();
     updateExportPreview();
 };
 
-// Escáner Bounding Box: Corta la transparencia para dejar la silueta perfecta
 function getGlobalBoundingBox(frames) {
     let globalMinX = Infinity, globalMinY = Infinity, globalMaxX = -1, globalMaxY = -1;
     let hasContent = false;
@@ -378,46 +435,75 @@ function updateExportPreview() {
     const finalSprites = activeIndices.map(i => processedFrames[i]);
 
     if(finalSprites.length === 0) return;
-    let spriteCountElement = document.getElementById('finalSpriteCount');
-    if(spriteCountElement) spriteCountElement.innerText = finalSprites.length;
+    let fCountEl = document.getElementById('finalSpriteCount');
+    if(fCountEl) fCountEl.innerText = finalSprites.length;
 
-    // Obtener la caja del personaje real
     const bounds = getGlobalBoundingBox(finalSprites);
     if (!bounds) return;
 
-    // Verificar el Modo (Auto o Manual)
     let mode = alignModeSelect.value;
-    let gW, gH;
-    let scaleVal = 1, drawX = 0, drawY = 0;
+    let isMasterLocked = masterGridRows.length > 0;
     
-    let cropW = bounds.w;
-    let cropH = bounds.h;
+    let gW, gH, scaleVal, drawX, drawY;
+    let cropW = bounds.w, cropH = bounds.h;
 
     if (mode === 'auto') {
-        // MODO AUTO: Se recorta la silueta limpia sin usar cuadrículas fijas ni sliders.
-        gW = cropW;
-        gH = cropH;
-        scaleVal = 1;
-        drawX = 0;
-        drawY = 0;
+        // En automático leemos el Master si existe, o usamos la silueta si no.
+        if (isMasterLocked && universalReferenceH > 0) {
+            gW = lockedGridW;
+            gH = lockedGridH;
+            scaleVal = universalReferenceH / cropH;
+        } else {
+            gW = cropW;
+            gH = cropH;
+            scaleVal = 1;
+        }
+        
+        let scaledW = cropW * scaleVal;
+        let scaledH = cropH * scaleVal;
+
+        // Auto centra en X y ancla al PISO en Y
+        drawX = (gW - scaledW) / 2;
+        drawY = gH - scaledH; 
+
+        // GUARDAR VALORES EN MEMORIA: Calculamos el equivalente Manual para cuando el usuario cambie de modo
+        window.lastAutoScale = Math.round(scaleVal * 100);
+        window.lastAutoOffX = 0; // X ya está centrado en ambos
+        // La diferencia entre el piso (Auto) y el centro (Manual) es justo la mitad del espacio sobrante
+        window.lastAutoOffY = Math.round((gH - scaledH) / 2); 
+
+        // Actualizamos los controles visualmente para que el usuario sepa qué hace la máquina
+        if(!isMasterLocked) { gridWInput.value = gW; gridHInput.value = gH; }
+        numScale.value = window.lastAutoScale; assetScale.value = window.lastAutoScale;
+        numOffX.value = window.lastAutoOffX; offsetX.value = window.lastAutoOffX;
+        numOffY.value = window.lastAutoOffY; offsetY.value = window.lastAutoOffY;
+
     } else {
-        // MODO MANUAL: Se encierra en la celda Grid configurada por el usuario
+        // MODO MANUAL: Respetamos cien por ciento lo que dicen los inputs
         gW = parseInt(gridWInput.value) || 180;
         gH = parseInt(gridHInput.value) || 180;
         
-        if (gridGuide) gridGuide.style.backgroundSize = `${gW}px ${gH}px`;
-        
-        scaleVal = parseInt(numScale.value) / 100;
+        if (isMasterLocked) {
+            gW = lockedGridW;
+            gH = lockedGridH;
+            gridWInput.value = gW;
+            gridHInput.value = gH;
+        }
+
+        scaleVal = parseFloat(numScale.value) / 100;
         let offX = parseInt(numOffX.value) || 0;
         let offY = parseInt(numOffY.value) || 0;
 
         let scaledW = cropW * scaleVal;
         let scaledH = cropH * scaleVal;
 
-        // Centrar y aplicar desplazamiento
+        // Manual centra en ambos ejes y luego aplica el offset del usuario
         drawX = (gW - scaledW) / 2 + offX;
         drawY = (gH - scaledH) / 2 + offY;
     }
+
+    if (gridGuide) gridGuide.style.backgroundSize = `${gW}px ${gH}px`;
+    window.currentAnimRawHeight = cropH; // Guardado por si se vuelve la primera fila
 
     finalExportCanvas.width = gW * finalSprites.length;
     finalExportCanvas.height = gH;
@@ -427,19 +513,14 @@ function updateExportPreview() {
     ctx.clearRect(0,0, finalExportCanvas.width, finalExportCanvas.height);
     
     finalSprites.forEach((f, index) => { 
-        // Crear Celda Individual
         let cellCanvas = document.createElement('canvas');
         cellCanvas.width = gW;
         cellCanvas.height = gH;
         let cCtx = cellCanvas.getContext('2d');
         cCtx.imageSmoothingEnabled = false;
-        
-        // Dibuja el frame recortado y escalado
         cCtx.drawImage(f, bounds.x, bounds.y, cropW, cropH, drawX, drawY, cropW * scaleVal, cropH * scaleVal);
 
-        // Previsualizar tira larga
         ctx.drawImage(cellCanvas, index * gW, 0);
-        
         currentCroppedSprites.push(cellCanvas);
     });
 }
@@ -454,17 +535,23 @@ btnExportSpriteSheet.onclick = () => {
 btnAppendToMaster.onclick = () => {
     if (btnAppendToMaster.disabled || currentCroppedSprites.length === 0) return;
 
-    // Solo agregar la fila tal cual fue ajustada
+    if (masterGridRows.length === 0) {
+        lockedGridW = parseInt(gridWInput.value) || 180;
+        lockedGridH = parseInt(gridHInput.value) || 180;
+        universalReferenceH = window.currentAnimRawHeight;
+    }
+
     masterGridRows.push([...currentCroppedSprites]);
     
     updateRowManagerUI();
     renderMasterBoard();
+    updateAlignmentUI(); // Por si cambió el estado de "isLocked"
     
     mPanX = 0; mPanY = 0; mScale = 1; updateMasterCamera();
     document.getElementById('masterSection').scrollIntoView({ behavior: 'smooth' });
 };
 
-// --- ADMINISTRADOR DE FILAS LIGADO A WINDOW (SIN BUGS DE BOTONES) ---
+// --- ADMINISTRADOR DE FILAS LIGADO A WINDOW ---
 window.moveRow = function(index, dir) {
     if (index + dir < 0 || index + dir >= masterGridRows.length) return;
     const temp = masterGridRows[index];
@@ -477,6 +564,14 @@ window.moveRow = function(index, dir) {
 window.deleteRow = function(index) {
     if(!confirm(`¿Seguro que quieres borrar la fila ${index + 1}?`)) return;
     masterGridRows.splice(index, 1);
+    
+    if(masterGridRows.length === 0 && !masterUploadedImg) {
+        lockedGridW = 0;
+        lockedGridH = 0;
+        universalReferenceH = 0;
+        updateAlignmentUI();
+    }
+    
     updateRowManagerUI();
     renderMasterBoard();
 };
@@ -544,18 +639,8 @@ function renderMasterBoard() {
         return;
     }
 
-    let globalMaxW = 0;
-    let globalMaxH = 0;
-
-    masterGridRows.forEach(row => {
-        row.forEach(spr => {
-            if (spr.width > globalMaxW) globalMaxW = spr.width;
-            if (spr.height > globalMaxH) globalMaxH = spr.height;
-        });
-    });
-
-    let cellW = globalMaxW;
-    let cellH = globalMaxH;
+    let cellW = lockedGridW || parseInt(gridWInput.value) || 180;
+    let cellH = lockedGridH || parseInt(gridHInput.value) || 180; 
 
     let startY = 0;
     if (masterUploadedImg) startY = masterUploadedImg.height;
@@ -572,13 +657,14 @@ function renderMasterBoard() {
 
     masterGridRows.forEach((row, rIdx) => {
         row.forEach((spr, cIdx) => {
-            let dX = cIdx * cellW + (cellW - spr.width)/2;
-            let dY = startY + (rIdx * cellH) + (cellH - spr.height); 
+            let dX = cIdx * cellW;
+            let dY = startY + (rIdx * cellH); 
             masterCtx.drawImage(spr, dX, dY);
         });
     });
 }
 
+// --- EL SMART SLICE CORTADOR (VERTICAL + HORIZONTAL) ---
 masterDropZone.onclick = () => masterInput.click();
 masterInput.onchange = (e) => { if(e.target.files.length) loadMasterImage(e.target.files[0]); };
 
@@ -586,8 +672,88 @@ function loadMasterImage(file) {
     if(!file || !file.type.startsWith('image/')) return alert("Sube un PNG");
     const img = new Image();
     img.onload = () => {
-        masterUploadedImg = img; 
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = img.width;
+        tempCanvas.height = img.height;
+        const ctx = tempCanvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        const imgData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
+
+        // 1. Escanear Filas (Horizontal)
+        function isRowEmpty(y) {
+            for (let x = 0; x < tempCanvas.width; x++) {
+                if (imgData[(y * tempCanvas.width + x) * 4 + 3] > 10) return false;
+            }
+            return true;
+        }
+
+        let rows = [];
+        let inRow = false;
+        let startY = 0;
+
+        for (let y = 0; y < tempCanvas.height; y++) {
+            let empty = isRowEmpty(y);
+            if (!inRow && !empty) {
+                inRow = true;
+                startY = y;
+            } else if (inRow && empty) {
+                inRow = false;
+                rows.push({ y: startY, h: y - startY });
+            }
+        }
+        if (inRow) rows.push({ y: startY, h: tempCanvas.height - startY });
+
+        masterGridRows = []; 
+        
+        if (rows.length > 0) {
+            // 2. Escanear Columnas por cada Fila (Vertical)
+            rows.forEach(rect => {
+                let rowSprites = [];
+                let inCol = false;
+                let startX = 0;
+
+                function isColEmpty(x) {
+                    for (let y = rect.y; y < rect.y + rect.h; y++) {
+                        if (imgData[(y * tempCanvas.width + x) * 4 + 3] > 10) return false;
+                    }
+                    return true;
+                }
+
+                for (let x = 0; x < tempCanvas.width; x++) {
+                    let empty = isColEmpty(x);
+                    if (!inCol && !empty) {
+                        inCol = true;
+                        startX = x;
+                    } else if (inCol && empty) {
+                        inCol = false;
+                        let sprW = x - startX;
+                        let sprCanvas = document.createElement('canvas');
+                        sprCanvas.width = sprW;
+                        sprCanvas.height = rect.h;
+                        sprCanvas.getContext('2d').drawImage(tempCanvas, startX, rect.y, sprW, rect.h, 0, 0, sprW, rect.h);
+                        rowSprites.push(sprCanvas);
+                    }
+                }
+                if (inCol) {
+                    let sprW = tempCanvas.width - startX;
+                    let sprCanvas = document.createElement('canvas');
+                    sprCanvas.width = sprW;
+                    sprCanvas.height = rect.h;
+                    sprCanvas.getContext('2d').drawImage(tempCanvas, startX, rect.y, sprW, rect.h, 0, 0, sprW, rect.h);
+                    rowSprites.push(sprCanvas);
+                }
+
+                if(rowSprites.length > 0) masterGridRows.push(rowSprites);
+            });
+        } else {
+            masterGridRows.push([tempCanvas]);
+        }
+        
+        masterUploadedImg = null; 
+        updateRowManagerUI();
         renderMasterBoard(); 
+        updateAlignmentUI(); // Bloquear grid base si suben el master directamente
         mPanX = 0; mPanY = 0; mScale = 1; updateMasterCamera();
         document.getElementById('masterSection').scrollIntoView({ behavior: 'smooth' });
     };
@@ -605,6 +771,10 @@ btnClearMaster.onclick = () => {
     masterGridRows = []; 
     masterUploadedImg = null;
     masterCanvas.width = 0; masterCanvas.height = 0;
+    
+    lockedGridW = 0; lockedGridH = 0; universalReferenceH = 0;
+    updateAlignmentUI();
+    
     updateRowManagerUI();
     mPanX = 0; mPanY = 0; mScale = 1; updateMasterCamera();
 };
@@ -641,3 +811,6 @@ masterCamera.parentElement.addEventListener('wheel', (e) => {
 document.getElementById('btnZoomIn').onclick = () => { mScale = Math.min(mScale + 0.2, 5); updateMasterCamera(); };
 document.getElementById('btnZoomOut').onclick = () => { mScale = Math.max(mScale - 0.2, 0.1); updateMasterCamera(); };
 document.getElementById('btnZoomReset').onclick = () => { mScale = 1; mPanX = 0; mPanY = 0; updateMasterCamera(); };
+
+// Iniciar con UI sincronizada
+setTimeout(updateAlignmentUI, 100);

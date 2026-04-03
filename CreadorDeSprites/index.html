@@ -129,11 +129,10 @@
             </div>
         </main>
 
-        <section class="card p-6 mt-6 panel-disabled" id="exportSection">
+    <section class="card p-6 mt-6 panel-disabled" id="exportSection">
             <h2 class="card-title text-orange-400 mb-5">Capa 4: Exportación Optimizada <span class="text-xs text-slate-500">(Fila Única)</span></h2>
             
             <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 mb-5">
-                
                 <div class="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 border-b border-slate-700">
                     <div class="flex items-center gap-3">
                         <label class="text-sm text-slate-300 font-semibold">Salto de frames:</label>
@@ -144,47 +143,49 @@
                     </div>
                 </div>
 
-                <div class="mt-4">
-                    <label class="text-sm text-slate-300 font-bold block mb-2">Modo de Alineación:</label>
-                    <select id="alignModeSelect" class="input-modern w-full md:w-1/2 bg-slate-900 border-indigo-500 font-semibold cursor-pointer">
+                <div class="mt-4 flex flex-col items-center gap-2">
+                    <label class="text-sm text-slate-300 font-bold">Modo de Alineación:</label>
+                    <select id="alignModeSelect" class="input-modern w-full md:w-2/3 bg-slate-900 text-sm cursor-pointer border-indigo-500 font-semibold">
                         <option value="auto">🤖 Mantener recorte de personaje automático</option>
                         <option value="manual">🛠️ Modificar por el usuario</option>
                     </select>
                 </div>
 
-                <div id="manualControls" class="hidden mt-6 flex flex-col gap-4">
-                    <div class="flex items-center gap-3 mb-2">
+                <div id="manualControls" class="mt-6 flex flex-col gap-6 pt-4 border-t border-slate-700 transition-opacity duration-300">
+                    
+                    <div class="flex items-center justify-center gap-3">
                         <label class="text-sm text-slate-300 font-semibold text-emerald-400">Tamaño Celda (Grid):</label>
-                        <input type="number" id="gridW" value="180" min="10" class="input-modern font-bold bg-slate-900 w-20 text-center">
+                        <input type="number" id="gridW" value="180" min="10" class="input-modern font-bold bg-slate-900 w-20 text-center control-lockable">
                         <span class="text-slate-500">x</span>
-                        <input type="number" id="gridH" value="180" min="10" class="input-modern font-bold bg-slate-900 w-20 text-center">
+                        <input type="number" id="gridH" value="180" min="10" class="input-modern font-bold bg-slate-900 w-20 text-center control-lockable">
                     </div>
 
-                    <div class="w-full bg-slate-900 p-4 rounded-lg border border-slate-700">
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="text-sm text-slate-400">Tamaño (%):</label>
-                            <input type="number" id="numScale" value="100" class="bg-transparent border-none text-indigo-300 font-mono font-bold text-right w-16 outline-none" min="5" max="300">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="w-full bg-slate-900 p-4 rounded-lg border border-slate-700">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-sm text-slate-300 font-medium">Tamaño (%):</span>
+                                <input type="number" id="numScale" value="100" class="text-indigo-300 font-mono bg-transparent border-none text-right w-16 outline-none control-lockable" min="5" max="300">
+                            </div>
+                            <input type="range" id="assetScale" min="5" max="300" value="100" class="slider-modern w-full control-lockable">
                         </div>
-                        <input type="range" id="assetScale" min="5" max="300" value="100" class="slider-modern w-full">
-                    </div>
-                    
-                    <div class="w-full bg-slate-900 p-4 rounded-lg border border-slate-700">
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="text-sm text-slate-400">Posición X:</label>
-                            <input type="number" id="numOffX" value="0" class="bg-transparent border-none text-emerald-300 font-mono font-bold text-right w-16 outline-none">
+                        
+                        <div class="w-full bg-slate-900 p-4 rounded-lg border border-slate-700">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-sm text-slate-300 font-medium">Posición X:</span>
+                                <input type="number" id="numOffX" value="0" class="text-emerald-300 font-mono bg-transparent border-none text-right w-16 outline-none control-lockable">
+                            </div>
+                            <input type="range" id="offsetX" min="-200" max="200" value="0" class="slider-modern w-full control-lockable">
                         </div>
-                        <input type="range" id="offsetX" min="-200" max="200" value="0" class="slider-modern w-full">
-                    </div>
-                    
-                    <div class="w-full bg-slate-900 p-4 rounded-lg border border-slate-700">
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="text-sm text-slate-400">Posición Y:</label>
-                            <input type="number" id="numOffY" value="0" class="bg-transparent border-none text-rose-300 font-mono font-bold text-right w-16 outline-none">
+                        
+                        <div class="w-full bg-slate-900 p-4 rounded-lg border border-slate-700">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-sm text-slate-300 font-medium">Posición Y:</span>
+                                <input type="number" id="numOffY" value="0" class="text-rose-300 font-mono bg-transparent border-none text-right w-16 outline-none control-lockable">
+                            </div>
+                            <input type="range" id="offsetY" min="-200" max="200" value="0" class="slider-modern w-full control-lockable">
                         </div>
-                        <input type="range" id="offsetY" min="-200" max="200" value="0" class="slider-modern w-full">
                     </div>
                 </div>
-
             </div>
 
             <div class="border border-slate-700 rounded-xl p-3 shadow-inner bg-slate-900 overflow-hidden w-full mb-5 relative">
