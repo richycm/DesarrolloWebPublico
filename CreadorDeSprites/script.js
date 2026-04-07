@@ -1,9 +1,10 @@
+// --- REFERENCIAS DEL DOM GLOBALES ---
 const mainVideo = document.getElementById('mainVideo');
 const mainImage = document.getElementById('mainImage');
 const timeline = document.getElementById('timeline');
 const loopTimeline = document.getElementById('loopTimeline');
 const loopCanvas = document.getElementById('loopCanvas');
-const loopCtx = loopCanvas.getContext('2d');
+const loopCtx = loopCanvas.getContext('2d', { alpha: true, willReadFrequently: true });
 
 const loopStart = document.getElementById('loopStart');
 const loopEnd = document.getElementById('loopEnd');
@@ -13,38 +14,38 @@ const generateBtn = document.getElementById('generateBtn');
 const dropZone = document.getElementById('dropZone');
 
 const chromaRefCanvas = document.getElementById('chromaRefCanvas');
-const chromaRefCtx = chromaRefCanvas.getContext('2d');
+const chromaRefCtx = chromaRefCanvas.getContext('2d', { willReadFrequently: true });
 const colorPreview = document.getElementById('colorPreview');
 const chromaTolerance = document.getElementById('chromaTolerance');
 const tolValueLabel = document.getElementById('tolValue');
 const chromaErode = document.getElementById('chromaErode');
 const erodeValueLabel = document.getElementById('erodeValue');
 
-// EXPORTACIÓN Y RECORTE CAPA 4
 const finalExportCanvas = document.getElementById('finalExportCanvas');
 const frameSkip = document.getElementById('frameSkip');
-const skipWarning = document.getElementById('skipWarning');
 const btnExportSpriteSheet = document.getElementById('btnExportSpriteSheet');
-
-// SELECTOR Y CONTROLES NUMÉRICOS
 const alignModeSelect = document.getElementById('alignModeSelect');
 const manualControls = document.getElementById('manualControls');
 
+// Controles Capa 4
 const gridWInput = document.getElementById('gridW');
 const gridHInput = document.getElementById('gridH');
 const gridGuide = document.getElementById('gridGuide');
 
-// Conexión Slider -> Input Numérico
 const assetScale = document.getElementById('assetScale');
 const numScale = document.getElementById('numScale');
+const anchorPoint = document.getElementById('anchorPoint');
+const aiStabilizeToggle = document.getElementById('aiStabilizeToggle');
+const spriteW = document.getElementById('spriteW');
+const spriteH = document.getElementById('spriteH');
+
 const offsetX = document.getElementById('offsetX');
 const numOffX = document.getElementById('numOffX');
 const offsetY = document.getElementById('offsetY');
 const numOffY = document.getElementById('numOffY');
 
-// MASTER BOARD & CAMERA
 const masterCanvas = document.getElementById('masterCanvas');
-const masterCtx = masterCanvas.getContext('2d');
+const masterCtx = masterCanvas.getContext('2d', { willReadFrequently: true });
 const masterCamera = document.getElementById('masterCamera');
 const btnAppendToMaster = document.getElementById('btnAppendToMaster');
 const masterDropZone = document.getElementById('masterDropZone');
@@ -53,47 +54,30 @@ const btnDownloadMaster = document.getElementById('btnDownloadMaster');
 const btnClearMaster = document.getElementById('btnClearMaster');
 const rowManagerContainer = document.getElementById('rowManagerContainer');
 
+// --- VARIABLES DE ESTADO ---
 let originalFramesData = [], processedFrames = [], timeStampMap = [], loopThumbElements = [];
 let previewTimer, currentLoopIdx = 0, playDirection = 1, selectedRGB = null;
 const FPS = 30;
 let currentMediaType = null;
 
-// ESTRUCTURA DE DATOS DEL MASTER BOARD DINÁMICO
 let currentCroppedSprites = []; 
 let masterGridRows = []; 
 let masterUploadedImg = null; 
 
-// Para bloquear la cuadrícula base y hacer el Auto-Scale
-let lockedGridW = 0;
-let lockedGridH = 0;
-let universalReferenceH = 0; // Se guarda en la Fila 1
+let lockedGridW = 0, lockedGridH = 0, universalReferenceH = 0; 
+let mScale = 1, mPanX = 0, mPanY = 0;
+let isDraggingM = false, startDragX, startDragY;
 
-// Memoria para que el Auto le pase los valores al Manual sin brincar
-window.lastAutoScale = 100;
-window.lastAutoOffX = 0;
-window.lastAutoOffY = 0;
-let prevMode = 'auto';
-
-// VARIABLES DE LA CÁMARA
-let mScale = 1;
-let mPanX = 0, mPanY = 0;
-let isDraggingM = false;
-let startDragX, startDragY;
-
-// --- 1. DRAG & DROP INMERSIVO ---
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    window.addEventListener(eventName, preventDefaults, false);
-    dropZone.addEventListener(eventName, preventDefaults, false);
+// --- 1. DRAG & DROP ---
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+    window.addEventListener(evt, preventDefaults, false);
+    dropZone.addEventListener(evt, preventDefaults, false);
 });
-function preventDefaults (e) { e.preventDefault(); e.stopPropagation(); }
-['dragenter', 'dragover'].forEach(eventName => { dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false); });
-['dragleave', 'drop'].forEach(eventName => { dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false); });
+function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+['dragenter', 'dragover'].forEach(evt => dropZone.addEventListener(evt, () => dropZone.classList.add('drag-over'), false));
+['dragleave', 'drop'].forEach(evt => dropZone.addEventListener(evt, () => dropZone.classList.remove('drag-over'), false));
 
-dropZone.addEventListener('drop', (e) => {
-    let dt = e.dataTransfer; let files = dt.files;
-    if(files.length) handleFile(files[0]);
-}, false);
-
+dropZone.addEventListener('drop', (e) => { if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); }, false);
 dropZone.onclick = () => document.getElementById('videoInput').click();
 document.getElementById('videoInput').onchange = (e) => { if (e.target.files.length) handleFile(e.target.files[0]); };
 
@@ -101,11 +85,18 @@ function handleFile(file) {
     if (!file) return; 
     const isVideo = file.type.startsWith('video/');
     const isImage = file.type.startsWith('image/');
-    if (!isVideo && !isImage) return alert("Sube video o imagen válido.");
+    if (!isVideo && !isImage) return alert("Bro, sube un formato válido (.mp4, .png, .jpg).");
     
     const url = URL.createObjectURL(file);
-    if (isVideo) { currentMediaType = 'video'; mainVideo.src = url; mainVideo.load(); } 
-    else { currentMediaType = 'image'; mainImage.src = url; }
+    if (isVideo) { 
+        currentMediaType = 'video'; 
+        mainVideo.src = url; 
+        mainVideo.load(); 
+    } 
+    else { 
+        currentMediaType = 'image'; 
+        mainImage.src = url; 
+    }
     
     dropZone.innerHTML = `
         <div class="text-center space-y-3">
@@ -113,37 +104,46 @@ function handleFile(file) {
             <p class="text-sm font-semibold text-slate-200">${isVideo ? '🎬' : '🖼️'} ${file.name}</p>
         </div>
     `;
-    ['loopSection', 'chromaSection', 'exportSection'].forEach(id => {
-        let el = document.getElementById(id);
-        if(el) el.classList.add('panel-disabled');
-    });
+    ['loopSection', 'chromaSection', 'exportSection'].forEach(id => document.getElementById(id)?.classList.add('panel-disabled'));
 }
 
-// --- 2. EXTRACCIÓN ---
+// --- 2. EXTRACCIÓN BUGFIX DE ASINCRONÍA ---
 generateBtn.onclick = async () => {
-    if (!currentMediaType) return alert("Sube un archivo primero");
+    if (!currentMediaType) return alert("Sube un archivo primero, crack.");
     generateBtn.innerText = "Procesando..."; generateBtn.disabled = true;
-    originalFramesData = []; processedFrames = []; timeStampMap = []; loopThumbElements = [];
+    
+    originalFramesData.length = 0; processedFrames.length = 0; timeStampMap.length = 0; loopThumbElements.length = 0;
     clearInterval(previewTimer); selectedRGB = null;
     timeline.innerHTML = ""; loopTimeline.innerHTML = "";
 
     const procCanvas = document.getElementById('procCanvas');
-    const pCtx = procCanvas.getContext('2d');
+    const pCtx = procCanvas.getContext('2d', { willReadFrequently: true });
     
     if (currentMediaType === 'video') {
         const step = parseInt(document.getElementById('frameStep').value) || 1;
-        mainVideo.load();
+        
         await new Promise(r => {
-            if (mainVideo.readyState >= 2) r();
-            else { mainVideo.onloadeddata = r; mainVideo.onerror = r; }
+            if (mainVideo.readyState >= 1) r();
+            else { mainVideo.onloadedmetadata = r; mainVideo.onerror = r; }
         });
-        procCanvas.width = mainVideo.videoWidth; procCanvas.height = mainVideo.videoHeight;
-        loopStart.max = mainVideo.duration; loopEnd.max = mainVideo.duration; loopEnd.value = mainVideo.duration;
+        
+        await new Promise(r => setTimeout(r, 150)); 
+        if (mainVideo.videoWidth === 0) return failLoad("El navegador no pudo decodificar el video.");
+
+        procCanvas.width = mainVideo.videoWidth; 
+        procCanvas.height = mainVideo.videoHeight;
+        loopStart.max = mainVideo.duration; 
+        loopEnd.max = mainVideo.duration; 
+        loopEnd.value = mainVideo.duration;
         
         let currentTime = 0;
         while (currentTime < mainVideo.duration) {
             mainVideo.currentTime = currentTime;
-            await new Promise(r => { mainVideo.onseeked = r; setTimeout(r, 80); });
+            await new Promise(r => { 
+                const onSeek = () => { mainVideo.removeEventListener('seeked', onSeek); r(); };
+                mainVideo.addEventListener('seeked', onSeek);
+                setTimeout(r, 100); 
+            });
             pCtx.drawImage(mainVideo, 0, 0);
             timeStampMap.push(currentTime);
             saveFrameToPipeline(procCanvas);
@@ -154,40 +154,57 @@ generateBtn.onclick = async () => {
             if (mainImage.complete && mainImage.naturalHeight !== 0) r();
             else { mainImage.onload = r; mainImage.onerror = r; }
         });
-        procCanvas.width = mainImage.naturalWidth; procCanvas.height = mainImage.naturalHeight;
+
+        if (mainImage.naturalWidth === 0) return failLoad("Imagen corrupta o formato no soportado.");
+
+        procCanvas.width = mainImage.naturalWidth; 
+        procCanvas.height = mainImage.naturalHeight;
         pCtx.drawImage(mainImage, 0, 0);
         loopStart.max = 0; loopEnd.max = 0; loopEnd.value = 0;
         timeStampMap.push(0);
         saveFrameToPipeline(procCanvas);
     }
     
-    ['loopSection', 'chromaSection', 'exportSection'].forEach(id => {
-        let el = document.getElementById(id);
-        if(el) el.classList.remove('panel-disabled');
-    });
+    ['loopSection', 'chromaSection', 'exportSection'].forEach(id => document.getElementById(id)?.classList.remove('panel-disabled'));
     manualFrameStart.max = originalFramesData.length; manualFrameEnd.max = originalFramesData.length;
     manualFrameStart.value = 1; manualFrameEnd.value = originalFramesData.length;
     generateBtn.innerText = "⚡ Procesar Asset"; generateBtn.disabled = false;
     
     syncLoopControls('slider'); updateChromaRef(); 
-    alignModeSelect.value = 'auto'; // Forzar a auto al cargar uno nuevo
-    alignModeSelect.dispatchEvent(new Event('change'));
+    alignModeSelect.value = 'auto'; alignModeSelect.dispatchEvent(new Event('change'));
     startCanvasPreview();
 };
 
+function failLoad(msg) {
+    alert(msg);
+    generateBtn.innerText = "⚡ Procesar Asset"; generateBtn.disabled = false;
+}
+
 function saveFrameToPipeline(procCanvas) {
     const f = document.createElement('canvas'); f.width = procCanvas.width; f.height = procCanvas.height;
-    f.getContext('2d').drawImage(procCanvas, 0, 0); originalFramesData.push(f);
+    f.getContext('2d', { willReadFrequently: true }).drawImage(procCanvas, 0, 0); 
+    originalFramesData.push(f);
 
     const pf = document.createElement('canvas'); pf.width = procCanvas.width; pf.height = procCanvas.height;
-    pf.getContext('2d').drawImage(f, 0, 0); processedFrames.push(pf);
-    timeline.appendChild(f);
+    pf.getContext('2d', { willReadFrequently: true }).drawImage(f, 0, 0); 
+    processedFrames.push(pf);
+    
+    const safeHeight = procCanvas.height > 0 ? procCanvas.height : 1;
+    const thumbScale = Math.min(1, 100 / safeHeight);
+    const thumbW = Math.max(1, procCanvas.width * thumbScale);
+    const thumbH = Math.max(1, procCanvas.height * thumbScale);
 
-    const fl = f.cloneNode(); fl.getContext('2d').drawImage(f, 0, 0);
+    const t1 = document.createElement('canvas'); t1.width = thumbW; t1.height = thumbH;
+    t1.getContext('2d').drawImage(procCanvas, 0, 0, thumbW, thumbH);
+    timeline.appendChild(t1);
+
+    const t2 = document.createElement('canvas'); t2.width = thumbW; t2.height = thumbH;
+    t2.getContext('2d').drawImage(procCanvas, 0, 0, thumbW, thumbH);
+    
     const currentIdx = originalFramesData.length - 1;
-    fl.onclick = () => { loopStart.value = timeStampMap[currentIdx]; syncLoopControls('slider'); };
-    fl.oncontextmenu = (e) => { e.preventDefault(); loopEnd.value = timeStampMap[currentIdx]; syncLoopControls('slider'); };
-    loopThumbElements.push(fl); loopTimeline.appendChild(fl);
+    t2.onclick = () => { loopStart.value = timeStampMap[currentIdx]; syncLoopControls('slider'); };
+    t2.oncontextmenu = (e) => { e.preventDefault(); loopEnd.value = timeStampMap[currentIdx]; syncLoopControls('slider'); };
+    loopThumbElements.push(t2); loopTimeline.appendChild(t2);
 }
 
 // --- 3. EDITOR DE LOOP ---
@@ -224,13 +241,13 @@ function findClosestIndex(t) {
 
 loopStart.oninput = () => syncLoopControls('slider'); loopEnd.oninput = () => syncLoopControls('slider');
 manualFrameStart.onchange = () => syncLoopControls('keyboard'); manualFrameEnd.onchange = () => syncLoopControls('keyboard');
+
 ['pingPongMode', 'blendLoopMode', 'blendFramesCount'].forEach(id => {
-    let el = document.getElementById(id);
-    if(el) el.onchange = startCanvasPreview;
+    let el = document.getElementById(id); 
+    if(el) el.onchange = () => { startCanvasPreview(); updateExportPreview(); };
 });
 frameSkip.oninput = () => { if (frameSkip.value < 1) frameSkip.value = 1; updateExportPreview(); startCanvasPreview(); };
 
-// --- 4. MOTOR DE PREVIEW ---
 function startCanvasPreview() {
     clearInterval(previewTimer); let magicStep = 0;
     previewTimer = setInterval(() => {
@@ -284,6 +301,7 @@ function updateChromaRef() {
     chromaRefCanvas.width = f.width; chromaRefCanvas.height = f.height;
     chromaRefCanvas.getContext('2d').drawImage(f, 0, 0);
 }
+
 chromaRefCanvas.onclick = (e) => {
     const r = chromaRefCanvas.getBoundingClientRect(), sX = chromaRefCanvas.width / r.width, sY = chromaRefCanvas.height / r.height;
     const p = chromaRefCanvas.getContext('2d').getImageData((e.clientX - r.left) * sX, (e.clientY - r.top) * sY, 1, 1).data;
@@ -295,136 +313,118 @@ chromaErode.oninput = () => { erodeValueLabel.innerText = chromaErode.value + ' 
 
 function applyChromaNonDestructive() {
     if (!selectedRGB || !originalFramesData.length) return;
-    const tolSq = Math.pow(parseInt(chromaTolerance.value), 2);
+    const tolSq = chromaTolerance.value * chromaTolerance.value; 
     const erodeRadius = parseInt(chromaErode.value) || 0;
+    const targetR = selectedRGB.r, targetG = selectedRGB.g, targetB = selectedRGB.b;
 
     originalFramesData.forEach((origCanvas, i) => {
         const procCtx = processedFrames[i].getContext('2d', { willReadFrequently: true });
         const w = origCanvas.width, h = origCanvas.height;
         const imgData = origCanvas.getContext('2d', { willReadFrequently: true }).getImageData(0,0,w,h);
         const d = imgData.data;
+        const len = d.length;
 
-        for (let j=0; j<d.length; j+=4) {
-            if (Math.pow(d[j]-selectedRGB.r, 2) + Math.pow(d[j+1]-selectedRGB.g, 2) + Math.pow(d[j+2]-selectedRGB.b, 2) <= tolSq) d[j+3] = 0;
+        for (let j = 0; j < len; j += 4) {
+            const dr = d[j] - targetR, dg = d[j+1] - targetG, db = d[j+2] - targetB;
+            if ((dr * dr + dg * dg + db * db) <= tolSq) d[j+3] = 0; 
         }
 
         if (erodeRadius > 0) {
             const outAlpha = new Uint8Array(w * h);
             for (let p = 0; p < w * h; p++) outAlpha[p] = d[p * 4 + 3];
+            let idx = 0;
             for (let y = 0; y < h; y++) {
                 for (let x = 0; x < w; x++) {
-                    const idx = y * w + x;
                     if (outAlpha[idx] > 0) {
                         let isEdge = false;
-                        for (let dy = -erodeRadius; dy <= erodeRadius; dy++) {
-                            for (let dx = -erodeRadius; dx <= erodeRadius; dx++) {
-                                if (dx === 0 && dy === 0) continue;
-                                const nx = x + dx, ny = y + dy;
-                                if (nx >= 0 && nx < w && ny >= 0 && ny < h && outAlpha[ny * w + nx] === 0) { isEdge = true; break; }
-                            } if (isEdge) break;
+                        const yMin = Math.max(0, y - erodeRadius), yMax = Math.min(h - 1, y + erodeRadius);
+                        const xMin = Math.max(0, x - erodeRadius), xMax = Math.min(w - 1, x + erodeRadius);
+                        edgeCheck: for (let ny = yMin; ny <= yMax; ny++) {
+                            const yOffset = ny * w;
+                            for (let nx = xMin; nx <= xMax; nx++) {
+                                if (outAlpha[yOffset + nx] === 0) { isEdge = true; break edgeCheck; }
+                            }
                         }
                         if (isEdge) d[idx * 4 + 3] = 0; 
                     }
+                    idx++;
                 }
             }
         }
         
-        procCtx.clearRect(0,0,w,h); procCtx.putImageData(imgData, 0, 0);
+        procCtx.putImageData(imgData, 0, 0);
         const thumbCtx = loopThumbElements[i].getContext('2d');
-        thumbCtx.clearRect(0,0,w,h); thumbCtx.drawImage(processedFrames[i], 0, 0);
+        thumbCtx.clearRect(0,0, thumbCtx.canvas.width, thumbCtx.canvas.height);
+        thumbCtx.drawImage(processedFrames[i], 0, 0, thumbCtx.canvas.width, thumbCtx.canvas.height);
     });
     updateExportPreview(); 
 }
 
-// --- 6. EXPORTACIÓN HÍBRIDA CAPA 4 (LA MAGIA VISUAL/MANUAL) ---
+// --- 6. EXPORTACIÓN HÍBRIDA CAPA 4 (ESTABILIZACIÓN PERFECTA) ---
+if(assetScale) assetScale.oninput = (e) => { numScale.value = e.target.value; updateExportPreview(); };
+if(numScale) numScale.oninput = (e) => { assetScale.value = e.target.value; updateExportPreview(); };
+if(anchorPoint) anchorPoint.onchange = updateExportPreview;
+if(aiStabilizeToggle) aiStabilizeToggle.onchange = updateExportPreview;
+if(spriteW) spriteW.oninput = updateExportPreview;
+if(spriteH) spriteH.oninput = updateExportPreview;
+if(offsetX) offsetX.oninput = (e) => { numOffX.value = e.target.value; updateExportPreview(); };
+if(numOffX) numOffX.oninput = (e) => { offsetX.value = e.target.value; updateExportPreview(); };
+if(offsetY) offsetY.oninput = (e) => { numOffY.value = e.target.value; updateExportPreview(); };
+if(numOffY) numOffY.oninput = (e) => { offsetY.value = e.target.value; updateExportPreview(); };
+if(gridWInput) gridWInput.oninput = updateExportPreview;
+if(gridHInput) gridHInput.oninput = updateExportPreview;
 
-assetScale.oninput = (e) => { numScale.value = e.target.value; updateExportPreview(); };
-numScale.oninput = (e) => { assetScale.value = e.target.value; updateExportPreview(); };
-
-offsetX.oninput = (e) => { numOffX.value = e.target.value; updateExportPreview(); };
-numOffX.oninput = (e) => { offsetX.value = e.target.value; updateExportPreview(); };
-
-offsetY.oninput = (e) => { numOffY.value = e.target.value; updateExportPreview(); };
-numOffY.oninput = (e) => { offsetY.value = e.target.value; updateExportPreview(); };
-
-gridWInput.oninput = updateExportPreview;
-gridHInput.oninput = updateExportPreview;
-
-// Actualizar estados visuales de la UI
 function updateAlignmentUI() {
     let isAuto = alignModeSelect.value === 'auto';
     let isMasterLocked = masterGridRows.length > 0;
+    if(manualControls.classList.contains('hidden')) manualControls.classList.remove('hidden');
 
-    // Asegurarse que el contenedor de controles siempre esté visible
-    if(manualControls.classList.contains('hidden')) {
-        manualControls.classList.remove('hidden');
-    }
+    document.querySelectorAll('.control-lockable').forEach(el => el.disabled = isAuto);
+    manualControls.style.opacity = isAuto ? '0.5' : '1';
+    manualControls.style.pointerEvents = isAuto ? 'none' : 'auto';
+    if(gridGuide) gridGuide.style.display = isAuto ? 'none' : 'block';
 
-    const manualInputs = [assetScale, numScale, offsetX, numOffX, offsetY, numOffY];
-    manualInputs.forEach(el => { el.disabled = isAuto; });
-
-    if (isAuto) {
-        manualControls.style.opacity = '0.5';
-        manualControls.style.pointerEvents = 'none';
-        if(gridGuide) gridGuide.style.display = 'none';
-    } else {
-        manualControls.style.opacity = '1';
-        manualControls.style.pointerEvents = 'auto';
-        if(gridGuide) gridGuide.style.display = 'block';
-    }
-
-    if (isMasterLocked) {
-        gridWInput.disabled = true;
-        gridHInput.disabled = true;
-    } else {
-        gridWInput.disabled = isAuto;
-        gridHInput.disabled = isAuto;
-    }
+    if (isMasterLocked) { gridWInput.disabled = true; gridHInput.disabled = true; } 
+    else { gridWInput.disabled = isAuto; gridHInput.disabled = isAuto; }
 }
 
-// Evento al cambiar el desplegable
-alignModeSelect.onchange = () => {
-    let currentMode = alignModeSelect.value;
-
-    // MAGIA: Si el usuario pasa de 'auto' a 'manual', inyectamos los valores para que NO BRINQUE
-    if (prevMode === 'auto' && currentMode === 'manual') {
-        assetScale.value = window.lastAutoScale;
-        numScale.value = window.lastAutoScale;
-        offsetX.value = window.lastAutoOffX;
-        numOffX.value = window.lastAutoOffX;
-        offsetY.value = window.lastAutoOffY;
-        numOffY.value = window.lastAutoOffY;
-    }
-    
-    prevMode = currentMode;
-    updateAlignmentUI();
-    updateExportPreview();
-};
+alignModeSelect.onchange = () => { updateAlignmentUI(); updateExportPreview(); };
 
 function getGlobalBoundingBox(frames) {
-    let globalMinX = Infinity, globalMinY = Infinity, globalMaxX = -1, globalMaxY = -1;
-    let hasContent = false;
+    let gMinX = Infinity, gMinY = Infinity, gMaxX = -1, gMaxY = -1, hasContent = false;
     frames.forEach(canvas => {
-        const w = canvas.width, h = canvas.height;
-        const data = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data;
-        for (let y = 0; y < h; y++) {
-            for (let x = 0; x < w; x++) {
-                if (data[(y * w + x) * 4 + 3] > 10) { 
-                    if (x < globalMinX) globalMinX = x;
-                    if (y < globalMinY) globalMinY = y;
-                    if (x > globalMaxX) globalMaxX = x;
-                    if (y > globalMaxY) globalMaxY = y;
-                    hasContent = true;
-                }
-            }
+        let b = getFrameBoundingBox(canvas);
+        if(b) {
+            if (b.x < gMinX) gMinX = b.x;
+            if (b.y < gMinY) gMinY = b.y;
+            if (b.x + b.w > gMaxX) gMaxX = b.x + b.w;
+            if (b.y + b.h > gMaxY) gMaxY = b.y + b.h;
+            hasContent = true;
         }
     });
-    if (!hasContent) return null;
-    return { x: globalMinX, y: globalMinY, w: (globalMaxX - globalMinX) + 1, h: (globalMaxY - globalMinY) + 1 };
+    return hasContent ? { x: gMinX, y: gMinY, w: gMaxX - gMinX, h: gMaxY - gMinY } : null;
+}
+
+function getFrameBoundingBox(canvas) {
+    const w = canvas.width, h = canvas.height;
+    if(w === 0 || h === 0) return null;
+    const data = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data;
+    let minX = w, minY = h, maxX = -1, maxY = -1, hasContent = false;
+    for (let i = 3; i < data.length; i += 4) {
+        if (data[i] > 10) { 
+            const p = i >> 2, x = p % w, y = Math.floor(p / w);
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+            hasContent = true;
+        }
+    }
+    return hasContent ? { x: minX, y: minY, w: (maxX - minX) + 1, h: (maxY - minY) + 1 } : null;
 }
 
 function updateExportPreview() {
-    currentCroppedSprites = []; 
+    currentCroppedSprites.length = 0; 
     if(!processedFrames.length) return;
     const idxS = parseInt(manualFrameStart.value) - 1, idxE = parseInt(manualFrameEnd.value) - 1;
     if (isNaN(idxS) || isNaN(idxE)) return;
@@ -432,328 +432,275 @@ function updateExportPreview() {
     const skip = parseInt(frameSkip.value) || 1;
     let activeIndices = [];
     for (let i = idxS; i <= idxE; i += skip) activeIndices.push(i);
+    
+    const isPingPong = document.getElementById('pingPongMode').checked;
+    if (isPingPong && activeIndices.length > 2) {
+        for (let i = activeIndices.length - 2; i > 0; i--) activeIndices.push(activeIndices[i]);
+    }
+
     const finalSprites = activeIndices.map(i => processedFrames[i]);
 
     if(finalSprites.length === 0) return;
-    let fCountEl = document.getElementById('finalSpriteCount');
-    if(fCountEl) fCountEl.innerText = finalSprites.length;
+    if(document.getElementById('finalSpriteCount')) document.getElementById('finalSpriteCount').innerText = finalSprites.length;
 
-    const bounds = getGlobalBoundingBox(finalSprites);
-    if (!bounds) return;
+    const globalBounds = getGlobalBoundingBox(finalSprites);
+    if (!globalBounds) return;
 
     let mode = alignModeSelect.value;
     let isMasterLocked = masterGridRows.length > 0;
     
-    let gW, gH, scaleVal, drawX, drawY;
-    let cropW = bounds.w, cropH = bounds.h;
-
+    // MAGIA DE MACRO: En Modo Auto, calculamos la base perfecta y se la heredamos a los inputs manuales
     if (mode === 'auto') {
-        // En automático leemos el Master si existe, o usamos la silueta si no.
-        if (isMasterLocked && universalReferenceH > 0) {
-            gW = lockedGridW;
-            gH = lockedGridH;
-            scaleVal = universalReferenceH / cropH;
-        } else {
-            gW = cropW;
-            gH = cropH;
-            scaleVal = 1;
+        let optimalScale = (isMasterLocked && universalReferenceH > 0) ? (universalReferenceH / globalBounds.h) : 1;
+        
+        if (!isMasterLocked) {
+            gridWInput.value = Math.ceil(globalBounds.w * optimalScale) + 10; 
+            gridHInput.value = Math.ceil(globalBounds.h * optimalScale) + 10;
         }
         
-        let scaledW = cropW * scaleVal;
-        let scaledH = cropH * scaleVal;
-
-        // Auto centra en X y ancla al PISO en Y
-        drawX = (gW - scaledW) / 2;
-        drawY = gH - scaledH; 
-
-        // GUARDAR VALORES EN MEMORIA: Calculamos el equivalente Manual para cuando el usuario cambie de modo
-        window.lastAutoScale = Math.round(scaleVal * 100);
-        window.lastAutoOffX = 0; // X ya está centrado en ambos
-        // La diferencia entre el piso (Auto) y el centro (Manual) es justo la mitad del espacio sobrante
-        window.lastAutoOffY = Math.round((gH - scaledH) / 2); 
-
-        // Actualizamos los controles visualmente para que el usuario sepa qué hace la máquina
-        if(!isMasterLocked) { gridWInput.value = gW; gridHInput.value = gH; }
-        numScale.value = window.lastAutoScale; assetScale.value = window.lastAutoScale;
-        numOffX.value = window.lastAutoOffX; offsetX.value = window.lastAutoOffX;
-        numOffY.value = window.lastAutoOffY; offsetY.value = window.lastAutoOffY;
-
-    } else {
-        // MODO MANUAL: Respetamos cien por ciento lo que dicen los inputs
-        gW = parseInt(gridWInput.value) || 180;
-        gH = parseInt(gridHInput.value) || 180;
-        
-        if (isMasterLocked) {
-            gW = lockedGridW;
-            gH = lockedGridH;
-            gridWInput.value = gW;
-            gridHInput.value = gH;
-        }
-
-        scaleVal = parseFloat(numScale.value) / 100;
-        let offX = parseInt(numOffX.value) || 0;
-        let offY = parseInt(numOffY.value) || 0;
-
-        let scaledW = cropW * scaleVal;
-        let scaledH = cropH * scaleVal;
-
-        // Manual centra en ambos ejes y luego aplica el offset del usuario
-        drawX = (gW - scaledW) / 2 + offX;
-        drawY = (gH - scaledH) / 2 + offY;
+        let scalePct = Math.round(optimalScale * 100);
+        numScale.value = scalePct;
+        assetScale.value = scalePct;
+        spriteW.value = 0;
+        spriteH.value = 0;
+        anchorPoint.value = 'bottom';
+        numOffX.value = 0; 
+        offsetX.value = 0;
+        numOffY.value = 0; 
+        offsetY.value = 0;
+        aiStabilizeToggle.checked = true; 
     }
+    
+    let gW = parseInt(gridWInput.value) || 180;
+    let gH = parseInt(gridHInput.value) || 180;
+    if (isMasterLocked) { gW = lockedGridW; gH = lockedGridH; gridWInput.value = gW; gridHInput.value = gH; }
 
     if (gridGuide) gridGuide.style.backgroundSize = `${gW}px ${gH}px`;
-    window.currentAnimRawHeight = cropH; // Guardado por si se vuelve la primera fila
+    window.currentAnimRawHeight = globalBounds.h; 
 
-    finalExportCanvas.width = gW * finalSprites.length;
-    finalExportCanvas.height = gH;
-    
+    finalExportCanvas.width = gW * finalSprites.length; finalExportCanvas.height = gH;
     const ctx = finalExportCanvas.getContext('2d');
-    ctx.imageRendering = 'pixelated'; 
-    ctx.clearRect(0,0, finalExportCanvas.width, finalExportCanvas.height);
+    ctx.imageRendering = 'pixelated'; ctx.clearRect(0,0, finalExportCanvas.width, finalExportCanvas.height);
     
+    let baseScale = parseFloat(numScale.value) / 100;
+    let forceW = parseInt(spriteW.value) || 0;
+    let forceH = parseInt(spriteH.value) || 0;
+    let anchor = anchorPoint.value;
+    let offX = parseInt(numOffX.value) || 0;
+    let offY = parseInt(numOffY.value) || 0;
+    let stabilize = aiStabilizeToggle.checked;
+
+    // El escalado principal siempre obedece al Global para no deformar
+    let scaleX = baseScale, scaleY = baseScale;
+    if (forceW > 0 || forceH > 0) {
+        if (forceW > 0 && forceH > 0) { scaleX = forceW / globalBounds.w; scaleY = forceH / globalBounds.h; } 
+        else if (forceW > 0) { scaleX = forceW / globalBounds.w; scaleY = scaleX; } 
+        else if (forceH > 0) { scaleY = forceH / globalBounds.h; scaleX = scaleY; }
+    }
+
+    let globalScaledW = globalBounds.w * scaleX;
+    let globalScaledH = globalBounds.h * scaleY;
+
     finalSprites.forEach((f, index) => { 
+        let localBounds = getFrameBoundingBox(f);
+        if(!localBounds) localBounds = {x:0, y:0, w:f.width, h:f.height};
+        
+        let bounds, finalW, finalH, drawX, drawY;
+
+        if (stabilize) {
+            // HYBRID STABILIZATION: X usa centro global, Y se amarra a local
+            bounds = localBounds;
+            finalW = localBounds.w * scaleX;
+            finalH = localBounds.h * scaleY;
+            let localOffsetX = (localBounds.x - globalBounds.x) * scaleX;
+            let localOffsetY = (localBounds.y - globalBounds.y) * scaleY;
+
+            switch(anchor) {
+                case 'bottom': 
+                    drawX = (gW - globalScaledW) / 2 + localOffsetX; 
+                    drawY = gH - finalH; 
+                    break;
+                case 'center': 
+                    drawX = (gW - finalW) / 2; 
+                    drawY = (gH - finalH) / 2; 
+                    break;
+                case 'top': 
+                    drawX = (gW - globalScaledW) / 2 + localOffsetX; 
+                    drawY = 0; 
+                    break;
+                case 'left': 
+                    drawX = 0; 
+                    drawY = (gH - globalScaledH) / 2 + localOffsetY; 
+                    break;
+                case 'right': 
+                    drawX = gW - finalW; 
+                    drawY = (gH - globalScaledH) / 2 + localOffsetY; 
+                    break;
+            }
+        } else {
+            // PURE GLOBAL: Se recorta la caja global completa
+            bounds = globalBounds;
+            finalW = globalScaledW;
+            finalH = globalScaledH;
+            
+            switch(anchor) {
+                case 'bottom': drawX = (gW - finalW) / 2; drawY = (gH - finalH); break;
+                case 'center': drawX = (gW - finalW) / 2; drawY = (gH - finalH) / 2; break;
+                case 'top': drawX = (gW - finalW) / 2; drawY = 0; break;
+                case 'left': drawX = 0; drawY = (gH - finalH) / 2; break;
+                case 'right': drawX = (gW - finalW); drawY = (gH - finalH) / 2; break;
+            }
+        }
+
+        drawX += offX;
+        drawY += offY;
+
         let cellCanvas = document.createElement('canvas');
-        cellCanvas.width = gW;
-        cellCanvas.height = gH;
+        cellCanvas.width = gW; cellCanvas.height = gH;
         let cCtx = cellCanvas.getContext('2d');
         cCtx.imageSmoothingEnabled = false;
-        cCtx.drawImage(f, bounds.x, bounds.y, cropW, cropH, drawX, drawY, cropW * scaleVal, cropH * scaleVal);
-
+        cCtx.drawImage(f, bounds.x, bounds.y, bounds.w, bounds.h, drawX, drawY, finalW, finalH);
+        
         ctx.drawImage(cellCanvas, index * gW, 0);
         currentCroppedSprites.push(cellCanvas);
     });
 }
 
 btnExportSpriteSheet.onclick = () => {
-    if (btnExportSpriteSheet.disabled) return;
-    const link = document.createElement('a'); link.download = `fila_sprites_${manualFrameStart.value}.png`;
-    link.href = finalExportCanvas.toDataURL('image/png'); link.click();
+    if (!finalExportCanvas || btnExportSpriteSheet.disabled) return;
+    try {
+        const link = document.createElement('a'); 
+        link.download = `fila_sprites_${manualFrameStart.value}.png`;
+        link.href = finalExportCanvas.toDataURL('image/png'); 
+        link.click();
+    } catch(err) {
+        alert("Asegúrate de correr la web desde un servidor local (Live Server).");
+    }
 };
 
-// --- 7. MASTER BOARD COMPOSITOR ---
+// --- 7. MASTER BOARD COMPOSITOR Y CÁMARA ---
 btnAppendToMaster.onclick = () => {
     if (btnAppendToMaster.disabled || currentCroppedSprites.length === 0) return;
-
     if (masterGridRows.length === 0) {
-        lockedGridW = parseInt(gridWInput.value) || 180;
-        lockedGridH = parseInt(gridHInput.value) || 180;
+        lockedGridW = parseInt(gridWInput.value) || 180; lockedGridH = parseInt(gridHInput.value) || 180;
         universalReferenceH = window.currentAnimRawHeight;
     }
-
     masterGridRows.push([...currentCroppedSprites]);
-    
-    updateRowManagerUI();
-    renderMasterBoard();
-    updateAlignmentUI(); // Por si cambió el estado de "isLocked"
-    
+    updateRowManagerUI(); renderMasterBoard(); updateAlignmentUI();
     mPanX = 0; mPanY = 0; mScale = 1; updateMasterCamera();
     document.getElementById('masterSection').scrollIntoView({ behavior: 'smooth' });
 };
 
-// --- ADMINISTRADOR DE FILAS LIGADO A WINDOW ---
 window.moveRow = function(index, dir) {
     if (index + dir < 0 || index + dir >= masterGridRows.length) return;
-    const temp = masterGridRows[index];
-    masterGridRows[index] = masterGridRows[index + dir];
-    masterGridRows[index + dir] = temp;
-    updateRowManagerUI();
-    renderMasterBoard();
+    const temp = masterGridRows[index]; masterGridRows[index] = masterGridRows[index + dir]; masterGridRows[index + dir] = temp;
+    updateRowManagerUI(); renderMasterBoard();
 };
 
 window.deleteRow = function(index) {
     if(!confirm(`¿Seguro que quieres borrar la fila ${index + 1}?`)) return;
     masterGridRows.splice(index, 1);
-    
-    if(masterGridRows.length === 0 && !masterUploadedImg) {
-        lockedGridW = 0;
-        lockedGridH = 0;
-        universalReferenceH = 0;
-        updateAlignmentUI();
-    }
-    
-    updateRowManagerUI();
-    renderMasterBoard();
+    if(masterGridRows.length === 0 && !masterUploadedImg) { lockedGridW = 0; lockedGridH = 0; universalReferenceH = 0; updateAlignmentUI(); }
+    updateRowManagerUI(); renderMasterBoard();
 };
 
 function updateRowManagerUI() {
     if(!rowManagerContainer) return;
     rowManagerContainer.innerHTML = '';
-    if(masterGridRows.length === 0) {
-        rowManagerContainer.innerHTML = '<p class="text-center text-slate-600 text-xs py-6">La cuadrícula está vacía.</p>';
-        return;
-    }
+    if(masterGridRows.length === 0) { rowManagerContainer.innerHTML = '<p class="text-center text-slate-600 text-xs py-6">La cuadrícula está vacía.</p>'; return; }
 
     masterGridRows.forEach((row, index) => {
-        const item = document.createElement('div');
-        item.className = 'row-manager-item';
-
-        let previewCanvas = document.createElement('canvas');
-        previewCanvas.className = 'row-manager-preview';
+        const item = document.createElement('div'); item.className = 'row-manager-item';
+        let previewCanvas = document.createElement('canvas'); previewCanvas.className = 'row-manager-preview';
         if(row.length > 0) {
-            previewCanvas.width = row[0].width;
-            previewCanvas.height = row[0].height;
-            let pCtx = previewCanvas.getContext('2d');
-            pCtx.imageSmoothingEnabled = false;
-            pCtx.drawImage(row[0], 0, 0);
+            previewCanvas.width = row[0].width; previewCanvas.height = row[0].height;
+            let pCtx = previewCanvas.getContext('2d'); pCtx.imageSmoothingEnabled = false; pCtx.drawImage(row[0], 0, 0);
         }
-
         item.innerHTML = `<span class="row-manager-idx">${index + 1}</span>`;
         item.appendChild(previewCanvas);
-
-        const actions = document.createElement('div');
-        actions.className = 'row-manager-actions';
-
-        const btnUp = document.createElement('button');
-        btnUp.className = 'btn-row-action';
-        btnUp.innerHTML = '⬆️';
-        btnUp.disabled = index === 0;
-        btnUp.setAttribute('onclick', `window.moveRow(${index}, -1)`);
-
-        const btnDown = document.createElement('button');
-        btnDown.className = 'btn-row-action';
-        btnDown.innerHTML = '⬇️';
-        btnDown.disabled = index === masterGridRows.length - 1;
-        btnDown.setAttribute('onclick', `window.moveRow(${index}, 1)`);
-
-        const btnDel = document.createElement('button');
-        btnDel.className = 'btn-row-action btn-row-delete';
-        btnDel.innerHTML = '🗑️';
-        btnDel.setAttribute('onclick', `window.deleteRow(${index})`);
-
-        actions.appendChild(btnUp);
-        actions.appendChild(btnDown);
-        actions.appendChild(btnDel);
-
-        item.appendChild(actions);
-        rowManagerContainer.appendChild(item);
+        
+        const actions = document.createElement('div'); actions.className = 'row-manager-actions';
+        actions.innerHTML = `
+            <button class="btn-row-action" ${index === 0 ? 'disabled' : ''} onclick="window.moveRow(${index}, -1)">⬆️</button>
+            <button class="btn-row-action" ${index === masterGridRows.length - 1 ? 'disabled' : ''} onclick="window.moveRow(${index}, 1)">⬇️</button>
+            <button class="btn-row-action btn-row-delete" onclick="window.deleteRow(${index})">🗑️</button>
+        `;
+        item.appendChild(actions); rowManagerContainer.appendChild(item);
     });
 }
 
 function renderMasterBoard() {
-    let maxCols = 0;
-    masterGridRows.forEach(row => { if (row.length > maxCols) maxCols = row.length; });
-
-    if (maxCols === 0 && !masterUploadedImg) {
-        masterCanvas.width = 0; masterCanvas.height = 0;
-        return;
-    }
+    let maxCols = 0; masterGridRows.forEach(row => { if (row.length > maxCols) maxCols = row.length; });
+    if (maxCols === 0 && !masterUploadedImg) { masterCanvas.width = 0; masterCanvas.height = 0; return; }
 
     let cellW = lockedGridW || parseInt(gridWInput.value) || 180;
     let cellH = lockedGridH || parseInt(gridHInput.value) || 180; 
-
-    let startY = 0;
-    if (masterUploadedImg) startY = masterUploadedImg.height;
-
-    let totalW = Math.max(maxCols * cellW, masterUploadedImg ? masterUploadedImg.width : 0);
-    let totalH = startY + (masterGridRows.length * cellH);
-
-    masterCanvas.width = totalW;
-    masterCanvas.height = totalH;
-    masterCtx.imageRendering = 'pixelated';
-    masterCtx.clearRect(0,0, masterCanvas.width, masterCanvas.height);
-
+    let startY = masterUploadedImg ? masterUploadedImg.height : 0;
+    
+    masterCanvas.width = Math.max(maxCols * cellW, masterUploadedImg ? masterUploadedImg.width : 0);
+    masterCanvas.height = startY + (masterGridRows.length * cellH);
+    
+    masterCtx.imageRendering = 'pixelated'; masterCtx.clearRect(0,0, masterCanvas.width, masterCanvas.height);
     if (masterUploadedImg) masterCtx.drawImage(masterUploadedImg, 0, 0);
 
     masterGridRows.forEach((row, rIdx) => {
-        row.forEach((spr, cIdx) => {
-            let dX = cIdx * cellW;
-            let dY = startY + (rIdx * cellH); 
-            masterCtx.drawImage(spr, dX, dY);
-        });
+        row.forEach((spr, cIdx) => masterCtx.drawImage(spr, cIdx * cellW, startY + (rIdx * cellH)));
     });
 }
 
-// --- EL SMART SLICE CORTADOR (VERTICAL + HORIZONTAL) ---
 masterDropZone.onclick = () => masterInput.click();
 masterInput.onchange = (e) => { if(e.target.files.length) loadMasterImage(e.target.files[0]); };
 
 function loadMasterImage(file) {
-    if(!file || !file.type.startsWith('image/')) return alert("Sube un PNG");
+    if(!file || !file.type.startsWith('image/')) return alert("Sube un PNG, bro");
     const img = new Image();
     img.onload = () => {
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = img.width;
-        tempCanvas.height = img.height;
-        const ctx = tempCanvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-
+        const tempCanvas = document.createElement('canvas'); tempCanvas.width = img.width; tempCanvas.height = img.height;
+        const ctx = tempCanvas.getContext('2d', { willReadFrequently: true }); ctx.drawImage(img, 0, 0);
         const imgData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
 
-        // 1. Escanear Filas (Horizontal)
         function isRowEmpty(y) {
-            for (let x = 0; x < tempCanvas.width; x++) {
-                if (imgData[(y * tempCanvas.width + x) * 4 + 3] > 10) return false;
-            }
+            for (let x = 0; x < tempCanvas.width; x++) if (imgData[(y * tempCanvas.width + x) * 4 + 3] > 10) return false;
             return true;
         }
 
-        let rows = [];
-        let inRow = false;
-        let startY = 0;
-
+        let rows = [], inRow = false, startY = 0;
         for (let y = 0; y < tempCanvas.height; y++) {
             let empty = isRowEmpty(y);
-            if (!inRow && !empty) {
-                inRow = true;
-                startY = y;
-            } else if (inRow && empty) {
-                inRow = false;
-                rows.push({ y: startY, h: y - startY });
-            }
+            if (!inRow && !empty) { inRow = true; startY = y; } 
+            else if (inRow && empty) { inRow = false; rows.push({ y: startY, h: y - startY }); }
         }
         if (inRow) rows.push({ y: startY, h: tempCanvas.height - startY });
 
         masterGridRows = []; 
-        
         if (rows.length > 0) {
-            // 2. Escanear Columnas por cada Fila (Vertical)
             rows.forEach(rect => {
-                let rowSprites = [];
-                let inCol = false;
-                let startX = 0;
-
+                let rowSprites = [], inCol = false, startX = 0;
                 function isColEmpty(x) {
-                    for (let y = rect.y; y < rect.y + rect.h; y++) {
-                        if (imgData[(y * tempCanvas.width + x) * 4 + 3] > 10) return false;
-                    }
+                    for (let y = rect.y; y < rect.y + rect.h; y++) if (imgData[(y * tempCanvas.width + x) * 4 + 3] > 10) return false;
                     return true;
                 }
-
                 for (let x = 0; x < tempCanvas.width; x++) {
                     let empty = isColEmpty(x);
-                    if (!inCol && !empty) {
-                        inCol = true;
-                        startX = x;
-                    } else if (inCol && empty) {
-                        inCol = false;
-                        let sprW = x - startX;
-                        let sprCanvas = document.createElement('canvas');
-                        sprCanvas.width = sprW;
-                        sprCanvas.height = rect.h;
+                    if (!inCol && !empty) { inCol = true; startX = x; } 
+                    else if (inCol && empty) {
+                        inCol = false; let sprW = x - startX;
+                        let sprCanvas = document.createElement('canvas'); sprCanvas.width = sprW; sprCanvas.height = rect.h;
                         sprCanvas.getContext('2d').drawImage(tempCanvas, startX, rect.y, sprW, rect.h, 0, 0, sprW, rect.h);
                         rowSprites.push(sprCanvas);
                     }
                 }
                 if (inCol) {
                     let sprW = tempCanvas.width - startX;
-                    let sprCanvas = document.createElement('canvas');
-                    sprCanvas.width = sprW;
-                    sprCanvas.height = rect.h;
+                    let sprCanvas = document.createElement('canvas'); sprCanvas.width = sprW; sprCanvas.height = rect.h;
                     sprCanvas.getContext('2d').drawImage(tempCanvas, startX, rect.y, sprW, rect.h, 0, 0, sprW, rect.h);
                     rowSprites.push(sprCanvas);
                 }
-
                 if(rowSprites.length > 0) masterGridRows.push(rowSprites);
             });
-        } else {
-            masterGridRows.push([tempCanvas]);
-        }
+        } else masterGridRows.push([tempCanvas]);
         
-        masterUploadedImg = null; 
-        updateRowManagerUI();
-        renderMasterBoard(); 
-        updateAlignmentUI(); // Bloquear grid base si suben el master directamente
+        masterUploadedImg = null; updateRowManagerUI(); renderMasterBoard(); updateAlignmentUI();
         mPanX = 0; mPanY = 0; mScale = 1; updateMasterCamera();
         document.getElementById('masterSection').scrollIntoView({ behavior: 'smooth' });
     };
@@ -768,49 +715,28 @@ btnDownloadMaster.onclick = () => {
 
 btnClearMaster.onclick = () => {
     if(!confirm("¿Seguro que deseas limpiar todo? Se perderán todas las filas.")) return;
-    masterGridRows = []; 
-    masterUploadedImg = null;
-    masterCanvas.width = 0; masterCanvas.height = 0;
-    
+    masterGridRows.length = 0; masterUploadedImg = null; masterCanvas.width = 0; masterCanvas.height = 0;
     lockedGridW = 0; lockedGridH = 0; universalReferenceH = 0;
-    updateAlignmentUI();
-    
-    updateRowManagerUI();
+    updateAlignmentUI(); updateRowManagerUI();
     mPanX = 0; mPanY = 0; mScale = 1; updateMasterCamera();
 };
 
-// --- MOTOR DE CÁMARA PRO ---
-function updateMasterCamera() {
-    masterCamera.style.transform = `translate(${mPanX}px, ${mPanY}px) scale(${mScale})`;
-}
+function updateMasterCamera() { masterCamera.style.transform = `translate(${mPanX}px, ${mPanY}px) scale(${mScale})`; }
 
 masterCamera.parentElement.addEventListener('mousedown', (e) => {
     isDraggingM = true; startDragX = e.clientX - mPanX; startDragY = e.clientY - mPanY; masterCamera.classList.add('grabbing-cursor');
 });
-
-window.addEventListener('mousemove', (e) => {
-    if (!isDraggingM) return;
-    mPanX = e.clientX - startDragX; mPanY = e.clientY - startDragY; updateMasterCamera();
-});
-
+window.addEventListener('mousemove', (e) => { if (isDraggingM) { mPanX = e.clientX - startDragX; mPanY = e.clientY - startDragY; updateMasterCamera(); } });
 window.addEventListener('mouseup', () => { isDraggingM = false; masterCamera.classList.remove('grabbing-cursor'); });
 masterCamera.parentElement.addEventListener('mouseleave', () => { isDraggingM = false; masterCamera.classList.remove('grabbing-cursor'); });
 
 masterCamera.parentElement.addEventListener('wheel', (e) => {
     e.preventDefault(); 
     if (e.ctrlKey || e.metaKey) {
-        const zoomIntensity = 0.05;
-        if (e.deltaY < 0) mScale += zoomIntensity; else mScale -= zoomIntensity;
+        mScale += (e.deltaY < 0 ? 0.05 : -0.05);
         mScale = Math.max(0.1, Math.min(mScale, 5)); 
-    } else {
-        mPanX -= e.deltaX; mPanY -= e.deltaY;
-    }
+    } else { mPanX -= e.deltaX; mPanY -= e.deltaY; }
     updateMasterCamera();
 }, { passive: false });
 
-document.getElementById('btnZoomIn').onclick = () => { mScale = Math.min(mScale + 0.2, 5); updateMasterCamera(); };
-document.getElementById('btnZoomOut').onclick = () => { mScale = Math.max(mScale - 0.2, 0.1); updateMasterCamera(); };
-document.getElementById('btnZoomReset').onclick = () => { mScale = 1; mPanX = 0; mPanY = 0; updateMasterCamera(); };
-
-// Iniciar con UI sincronizada
 setTimeout(updateAlignmentUI, 100);

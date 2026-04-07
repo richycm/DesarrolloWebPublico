@@ -66,8 +66,10 @@
             <div class="col-right space-y-8">
                 <section class="card p-6">
                     <h2 class="card-title text-slate-400 text-center mb-4">Capa 1: Originales</h2>
-                    <div class="border border-slate-800 rounded-xl bg-slate-950 overflow-hidden">
-                        <div id="timeline" class="timeline scroll-h"></div>
+                    <div class="border border-slate-800 rounded-xl bg-slate-950 p-2">
+                        <div class="scroll-h">
+                            <div id="timeline" class="timeline" style="width: max-content;"></div>
+                        </div>
                     </div>
                 </section>
 
@@ -80,8 +82,10 @@
                         </div>
                     </div>
 
-                    <div class="border border-slate-800 rounded-xl bg-slate-950 mb-6 overflow-hidden">
-                        <div id="loopTimeline" class="timeline loop-bar scroll-h"></div>
+                    <div class="border border-slate-800 rounded-xl bg-slate-950 p-2 mb-6">
+                        <div class="scroll-h">
+                            <div id="loopTimeline" class="timeline loop-bar" style="width: max-content;"></div>
+                        </div>
                     </div>
 
                     <div class="flex justify-center mb-8 w-full">
@@ -129,7 +133,7 @@
             </div>
         </main>
 
-    <section class="card p-6 mt-6 panel-disabled" id="exportSection">
+        <section class="card p-6 mt-6 panel-disabled" id="exportSection">
             <h2 class="card-title text-orange-400 mb-5">Capa 4: Exportación Optimizada <span class="text-xs text-slate-500">(Fila Única)</span></h2>
             
             <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 mb-5">
@@ -151,35 +155,65 @@
                     </select>
                 </div>
 
-                <div id="manualControls" class="mt-6 flex flex-col gap-6 pt-4 border-t border-slate-700 transition-opacity duration-300">
+                <div id="manualControls" class="mt-6 flex flex-col gap-6 pt-4 border-t border-slate-700 transition-opacity duration-300 hidden">
                     
-                    <div class="flex items-center justify-center gap-3">
-                        <label class="text-sm text-slate-300 font-semibold text-emerald-400">Tamaño Celda (Grid):</label>
-                        <input type="number" id="gridW" value="180" min="10" class="input-modern font-bold bg-slate-900 w-20 text-center control-lockable">
-                        <span class="text-slate-500">x</span>
-                        <input type="number" id="gridH" value="180" min="10" class="input-modern font-bold bg-slate-900 w-20 text-center control-lockable">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-900 p-4 rounded-lg border border-slate-700">
+                        <div class="flex flex-col gap-2">
+                            <label class="text-sm text-slate-300 font-bold text-purple-400">Punto de Anclaje (Pivot):</label>
+                            <select id="anchorPoint" class="input-modern bg-slate-800 text-sm font-semibold w-full control-lockable">
+                                <option value="bottom">⬇️ Pies (Bottom) - Fija al piso</option>
+                                <option value="center">⏺️ Centro (Center)</option>
+                                <option value="top">⬆️ Cabeza (Top)</option>
+                                <option value="left">⬅️ Izquierda (Left)</option>
+                                <option value="right">➡️ Derecha (Right)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center justify-center">
+                            <label class="toggle-container toggle-magic w-full justify-center gap-3">
+                                <span class="text-rose-300 font-bold text-sm">🤖 Estabilizar IA (Anti-Temblor)</span>
+                                <input type="checkbox" id="aiStabilizeToggle" checked class="control-lockable">
+                                <div class="toggle-slider"></div>
+                            </label>
+                        </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="w-full bg-slate-900 p-4 rounded-lg border border-slate-700">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-slate-700 pb-4">
+                        <div class="w-full bg-slate-950 p-4 rounded-lg border border-slate-800">
                             <div class="flex items-center justify-between mb-3">
                                 <span class="text-sm text-slate-300 font-medium">Tamaño (%):</span>
                                 <input type="number" id="numScale" value="100" class="text-indigo-300 font-mono bg-transparent border-none text-right w-16 outline-none control-lockable" min="5" max="300">
                             </div>
                             <input type="range" id="assetScale" min="5" max="300" value="100" class="slider-modern w-full control-lockable">
+                            <p class="text-[10px] text-slate-500 mt-2 text-center">Control base. Se ignora si Forzar WxH es > 0.</p>
                         </div>
-                        
+
+                        <div class="flex flex-col items-center justify-center gap-4 bg-slate-950 p-4 rounded-lg border border-slate-800">
+                            <div class="flex items-center gap-2">
+                                <label class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Grid Celda:</label>
+                                <input type="number" id="gridW" value="180" class="input-modern font-bold w-20 text-center text-emerald-400 control-lockable">
+                                <span class="text-slate-500">x</span>
+                                <input type="number" id="gridH" value="180" class="input-modern font-bold w-20 text-center text-emerald-400 control-lockable">
+                            </div>
+                            <div class="flex items-center gap-2 border-t border-slate-800 pt-3 w-full justify-center">
+                                <label class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Forzar WxH:</label>
+                                <input type="number" id="spriteW" value="0" class="input-modern font-bold w-16 text-center text-orange-400 control-lockable" title="0 = Usar Escala %">
+                                <span class="text-slate-500">x</span>
+                                <input type="number" id="spriteH" value="0" class="input-modern font-bold w-16 text-center text-orange-400 control-lockable" title="0 = Usar Escala %">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="w-full bg-slate-900 p-4 rounded-lg border border-slate-700">
                             <div class="flex items-center justify-between mb-3">
-                                <span class="text-sm text-slate-300 font-medium">Posición X:</span>
+                                <span class="text-sm text-slate-300 font-medium">Offset Fino X:</span>
                                 <input type="number" id="numOffX" value="0" class="text-emerald-300 font-mono bg-transparent border-none text-right w-16 outline-none control-lockable">
                             </div>
                             <input type="range" id="offsetX" min="-200" max="200" value="0" class="slider-modern w-full control-lockable">
                         </div>
-                        
                         <div class="w-full bg-slate-900 p-4 rounded-lg border border-slate-700">
                             <div class="flex items-center justify-between mb-3">
-                                <span class="text-sm text-slate-300 font-medium">Posición Y:</span>
+                                <span class="text-sm text-slate-300 font-medium">Offset Fino Y:</span>
                                 <input type="number" id="numOffY" value="0" class="text-rose-300 font-mono bg-transparent border-none text-right w-16 outline-none control-lockable">
                             </div>
                             <input type="range" id="offsetY" min="-200" max="200" value="0" class="slider-modern w-full control-lockable">
